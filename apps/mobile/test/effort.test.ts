@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   effortBands,
+  effortFloor,
   estimatedMaxHr,
   MIN_EFFORT_GAMES,
   timeInZones,
@@ -32,9 +33,22 @@ describe("heart-rate zones", () => {
     ];
     const zones = timeInZones(samples, { from: 0, to: 110_000 }, 200);
 
-    expect(zones[2]).toBe(10_000 + 10_000);
-    expect(zones[4]).toBe(ZONE_SAMPLE_CAP_MS);
+    // The 150/190 pair smooths to 170 each, so the first 10 s land in zone 3, not zone 5.
+    expect(zones[2]).toBe(10_000); // last 10 s at 150 bpm
+    expect(zones[3]).toBe(10_000 + ZONE_SAMPLE_CAP_MS); // 10 s, then the 90 s dropout capped at 30 s
     expect(zones.reduce((sum, ms) => sum + ms, 0)).toBe(50_000);
+  });
+});
+
+describe("effort strip floor", () => {
+  it("sits 20 bpm under the calmest game when that is lower than the easy line", () => {
+    // Easy line at max 190 is 95; 100 - 20 = 80 is lower, so 80 wins.
+    expect(effortFloor([100, 150], 190)).toBe(80);
+  });
+
+  it("never rises above the easy-zone line", () => {
+    // 120 - 20 = 100 is higher than 95, so the easy line caps the floor at 95.
+    expect(effortFloor([120, 150], 190)).toBe(95);
   });
 });
 

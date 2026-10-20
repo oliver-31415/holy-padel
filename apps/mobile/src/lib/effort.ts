@@ -1,5 +1,6 @@
 import type { HeartRateSample } from "@holy-padel/db";
-import type { ActivityWindow } from "@/lib/game-activity.ts";
+import { type ActivityWindow, readingHolds } from "@/lib/game-activity.ts";
+import { smoothHeartRate } from "@/lib/heart-rate-series.ts";
 
 /** A heart-rate zone: its name and the share of max heart rate where it starts. */
 export interface Zone {
@@ -37,8 +38,9 @@ export function zoneIndex(bpm: number, maxHr: number): number {
 }
 
 /**
- * Milliseconds spent in each zone inside a window. Each reading holds until the
- * next one (or the window's end), capped at `ZONE_SAMPLE_CAP_MS`.
+ * Milliseconds spent in each zone inside a window. The readings are smoothed
+ * first, so a sensor spike can't put time in a high zone. Each reading holds
+ * until the next one (or the window's end), capped at `ZONE_SAMPLE_CAP_MS`.
  */
 export function timeInZones(
   samples: readonly HeartRateSample[],
@@ -46,15 +48,22 @@ export function timeInZones(
   maxHr: number,
 ): number[] {
   const totals = ZONES.map(() => 0);
-  const inside = samples
-    .filter((sample) => sample.t >= window.from && sample.t <= window.to)
-    .sort((left, right) => left.t - right.t);
-  inside.forEach((sample, index) => {
-    const until = inside[index + 1]?.t ?? window.to;
-    const zone = zoneIndex(sample.bpm, maxHr);
-    totals[zone] = (totals[zone] ?? 0) + Math.min(until - sample.t, ZONE_SAMPLE_CAP_MS);
-  });
+  const inside = smoothHeartRate(samples).filter(
+    (sample) => sample.t >= window.from && sample.t <= window.to,
+  );
+  for (const hold of readingHolds(inside, window, ZONE_SAMPLE_CAP_MS)) {
+    const zone = zoneIndex(hold.bpm, maxHr);
+    totals[zone] = (totals[zone] ?? 0) + hold.ms;
+  }
   return totals;
+}
+
+/**
+ * The bottom of the effort strip: 20 bpm under the calmest game, or the easy-zone
+ * line for this max heart rate if that's lower, so a calm game isn't a stub.
+ */
+export function effortFloor(measured: readonly number[], maxHr: number): number {
+  return Math.min(Math.min(...measured) - 20, maxHr * (ZONES[0]?.from ?? 0));
 }
 
 /** A game's average heart rate and whether you won it. */

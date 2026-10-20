@@ -13,6 +13,7 @@ import type { EffortBand, GameEffort } from "@/lib/effort.ts";
 import { effortBands, estimatedMaxHr, timeInZones, ZONES } from "@/lib/effort.ts";
 import { activityIn, gameWindows, matchWindow } from "@/lib/game-activity.ts";
 import { computeGameSeries } from "@/lib/game-series.ts";
+import { smoothHeartRate } from "@/lib/heart-rate-series.ts";
 import type { RallyLengths } from "@/lib/rallies.ts";
 import { addRallies, NO_RALLIES, rallyLengths } from "@/lib/rallies.ts";
 
@@ -252,7 +253,8 @@ export function resolveMaxHr(driver: SqlDriver): MaxHr {
   }));
   let peak: number | undefined;
   for (const { heartRate } of tracked) {
-    for (const sample of heartRate ?? []) {
+    // Smoothed, so a one-sample sensor spike can't set the estimate.
+    for (const sample of smoothHeartRate(heartRate ?? [])) {
       peak = peak === undefined ? sample.bpm : Math.max(peak, sample.bpm);
     }
   }

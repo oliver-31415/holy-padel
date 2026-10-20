@@ -15,14 +15,14 @@ import Svg, {
 } from "react-native-svg";
 import { View, XStack } from "tamagui";
 import { Body } from "@/components/ui.tsx";
-import type { BpmScale } from "@/lib/game-activity.ts";
+import type { BpmScale, HeartRateSpan } from "@/lib/game-activity.ts";
 import { bpmScale, heartRateRuns } from "@/lib/game-activity.ts";
 import type { GameSeriesStep } from "@/lib/game-series.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
 
 const CHART_HEIGHT = 176;
 const PAD_X = 12;
-/** Right gutter for the bpm axis labels when the game has a heart-rate trace. */
+/** Right gutter for the bpm axis labels, kept on every game once the match has any heart rate. */
 const HR_AXIS = 34;
 const PAD_TOP = 16;
 /** Room under the plot for the time axis. */
@@ -200,26 +200,25 @@ function BpmAxis({
   );
 }
 
-/** The heart-rate curve with a soft fill, plotted on its own bpm axis. */
+/**
+ * The heart-rate curve on its own bpm axis. Measured stretches are solid with a
+ * soft fill; a bridged gap is a faint dashed line with no fill; a lone reading
+ * is a dot.
+ */
 function HeartRateLayer({
-  samples,
-  from,
-  to,
+  spans,
   xOf,
   scale,
   plotRight,
   width,
 }: {
-  readonly samples: readonly HeartRateSample[];
-  readonly from: number;
-  readonly to: number;
+  readonly spans: readonly HeartRateSpan[];
   readonly xOf: (t: number) => number;
   readonly scale: BpmScale;
   readonly plotRight: number;
   readonly width: number;
 }): ReactNode {
   const gradientId = `hr-${useId().replaceAll(/[^a-zA-Z0-9]/gu, "")}`;
-  const runs = heartRateRuns(samples, { from, to });
   const yOf = (bpm: number): number =>
     PAD_TOP +
     (1 - (bpm - scale.min) / Math.max(1, scale.max - scale.min)) * (PLOT_BOTTOM - PAD_TOP);
@@ -232,13 +231,42 @@ function HeartRateLayer({
           <Stop offset="1" stopColor={colors.danger} stopOpacity={0} />
         </LinearGradient>
       </Defs>
-      {runs.map((run) => {
-        const points = run.map((sample) => ({ x: xOf(sample.t), y: yOf(sample.bpm) }));
-        const curve = smoothPath(points);
+      {spans.map((span) => {
+        const points = span.points.map((sample) => ({ x: xOf(sample.t), y: yOf(sample.bpm) }));
         const [first] = points;
         const last = points.at(-1);
-        const key = `hr${String(run[0]?.t ?? 0)}`;
-        return first === undefined || last === undefined ? null : (
+        const key = `hr${String(span.points[0]?.t ?? 0)}`;
+        if (first === undefined || last === undefined) {
+          return null;
+        }
+        if (points.length === 1) {
+          return (
+            <Circle
+              key={key}
+              cx={first.x}
+              cy={first.y}
+              r={2.5}
+              fill={colors.danger}
+              fillOpacity={0.85}
+            />
+          );
+        }
+        const curve = smoothPath(points);
+        if (span.bridged) {
+          return (
+            <Path
+              key={key}
+              d={curve}
+              fill="none"
+              stroke={colors.danger}
+              strokeWidth={1.5}
+              strokeOpacity={0.35}
+              strokeDasharray="3 3"
+              strokeLinecap="round"
+            />
+          );
+        }
+        return (
           <G key={key}>
             <Path
               d={`${curve} L${last.x.toFixed(1)},${PLOT_BOTTOM} L${first.x.toFixed(1)},${PLOT_BOTTOM} Z`}
@@ -390,13 +418,11 @@ export function SnakeChart({
   const [measured, setMeasured] = useState(0);
   const width = fixedWidth ?? measured;
   const span = Math.max(1, endedAt - startedAt);
-  const scale = bpmScale(
-    heartRateRuns(heartRate ?? [], { from: startedAt, to: endedAt })
-      .flat()
-      .map((sample) => sample.bpm),
-  );
-  // With a heart-rate trace the plot leaves a right gutter for the bpm axis.
-  const plotRight = width - (scale === undefined ? PAD_X : HR_AXIS);
+  const spans = heartRateRuns(heartRate ?? [], { from: startedAt, to: endedAt });
+  const scale = bpmScale(spans.flatMap((run) => run.points.map((sample) => sample.bpm)));
+  // Once the match has any heart rate, every game keeps the bpm gutter so the plots line up.
+  const hasHeartRate = (heartRate?.length ?? 0) > 0;
+  const plotRight = width - (hasHeartRate ? HR_AXIS : PAD_X);
   const plotWidth = Math.max(0, plotRight - PAD_X);
   const maxLead = Math.max(3, ...steps.map((step) => Math.abs(step.lead)));
   const geometry: Geometry = {
@@ -420,9 +446,7 @@ export function SnakeChart({
           <LeadGuides geometry={geometry} plotRight={plotRight} />
           {heartRate === undefined || scale === undefined ? null : (
             <HeartRateLayer
-              samples={heartRate}
-              from={startedAt}
-              to={endedAt}
+              spans={spans}
               xOf={geometry.xOf}
               scale={scale}
               plotRight={plotRight}

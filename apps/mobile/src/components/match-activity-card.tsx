@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { View, XStack, YStack } from "tamagui";
 import { Figure, ZoneBar, zoneColor } from "@/components/insight-parts.tsx";
 import { Body, Card, Overline } from "@/components/ui.tsx";
-import { timeInZones, ZONES, zoneIndex } from "@/lib/effort.ts";
+import { effortFloor, timeInZones, ZONES, zoneIndex } from "@/lib/effort.ts";
 import { activityIn, distanceLabel, gameWindows, matchWindow } from "@/lib/game-activity.ts";
 import type { GameSeries } from "@/lib/game-series.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
@@ -57,7 +57,7 @@ function EffortStrip({
     return null;
   }
   const high = Math.max(...measured);
-  const floor = Math.min(...measured) - 8;
+  const floor = effortFloor(measured, maxHr);
   const hardest = bars.find((bar) => bar.avgBpm === high);
   return (
     <YStack gap={8} testID="effort-strip">
