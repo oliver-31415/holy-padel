@@ -2,6 +2,7 @@ import type { MatchSummary } from "@holy-padel/db";
 import { getOwner } from "@holy-padel/db";
 import type { PointEvent } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { View, XStack, YStack } from "tamagui";
 import { CardHeader } from "@/components/insight-parts.tsx";
 import { Body, Card } from "@/components/ui.tsx";
@@ -9,6 +10,7 @@ import { useDbQuery } from "@/db/provider.tsx";
 import type { Clutch, Turnaround } from "@/lib/clutch.ts";
 import { matchClutch, matchTurnarounds } from "@/lib/clutch.ts";
 import { ownerTeamOf } from "@/lib/format.ts";
+import { rallyLengths, rallyMoments } from "@/lib/rallies.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
 
 interface Moment {
@@ -89,6 +91,10 @@ export function KeyMomentsCard({
   const sport = match.config.sport ?? "padel";
   const unit = sport === "padel" ? "set" : "game";
   const decidingName = match.config.deuceMode === "starPoint" ? "star points" : "golden points";
+  const lengths = useMemo(
+    () => rallyLengths(match.config, events, team),
+    [match.config, events, team],
+  );
   const moments: Moment[] = [
     ...matchTurnarounds(match.config, events, team).map((turnaround) => ({
       key: `turn-${String(turnaround.setNumber)}`,
@@ -96,6 +102,7 @@ export function KeyMomentsCard({
       good: turnaround.cameBack,
     })),
     ...clutchMoments(matchClutch(match.config, events, team), decidingName),
+    ...rallyMoments(lengths.rallies),
   ];
   if (moments.length === 0) {
     return null;

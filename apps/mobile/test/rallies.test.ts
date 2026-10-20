@@ -4,8 +4,10 @@ import {
   addRallies,
   leftOutLabel,
   MIN_RALLY_MS,
+  type Rally,
   rallyLengthLabel,
   rallyLengths,
+  rallyMoments,
   summarizeRallies,
 } from "@/lib/rallies.ts";
 
@@ -132,5 +134,157 @@ describe("labels", () => {
     expect(total.rallies).toHaveLength(2);
     expect(total.tooShort).toBe(1);
     expect(total.tooLong).toBe(2);
+  });
+});
+
+/** Rallies in play order, from a list of `[seconds, won]` pairs. */
+function rallySeries(series: readonly (readonly [number, boolean])[]): Rally[] {
+  return series.map(([seconds, won]) => ({ ms: seconds * 1000, won }));
+}
+
+describe("rallyMoments", () => {
+  it("says nothing without enough rallies to summarise", () => {
+    expect(
+      rallyMoments(
+        rallySeries([
+          [8, true],
+          [9, false],
+          [30, true],
+        ]),
+      ),
+    ).toEqual([]);
+  });
+
+  it("says nothing when no rally stands out", () => {
+    const quiet = rallySeries([
+      [8, true],
+      [9, false],
+      [10, true],
+      [11, true],
+      [12, false],
+      [13, true],
+    ]);
+
+    expect(rallyMoments(quiet)).toEqual([]);
+  });
+
+  it("names a clear edge in the long rallies, and that you are weaker in the short ones", () => {
+    // Short (up to 12s): won 2 of 7. Long (over 12s): won 5 of 6. Interleaved, so no run.
+    const moments = rallyMoments(
+      rallySeries([
+        [6, true],
+        [13, true],
+        [7, true],
+        [14, true],
+        [8, false],
+        [15, true],
+        [9, false],
+        [16, true],
+        [10, false],
+        [17, true],
+        [11, false],
+        [17, false],
+        [12, false],
+      ]),
+    );
+
+    expect(moments).toEqual([
+      {
+        key: "rally-edge",
+        text: "You won 5 of 6 rallies over 12s, but only 2 of 7 up to 12s.",
+        good: false,
+      },
+    ]);
+  });
+
+  it("names the reverse edge, where you do better in the short rallies", () => {
+    const moments = rallyMoments(
+      rallySeries([
+        [6, true],
+        [13, true],
+        [7, true],
+        [14, false],
+        [8, true],
+        [15, false],
+        [9, true],
+        [16, true],
+        [10, true],
+        [17, false],
+        [11, false],
+        [17, false],
+        [12, false],
+      ]),
+    );
+
+    expect(moments).toEqual([
+      {
+        key: "rally-edge",
+        text: "You won 5 of 7 rallies up to 12s, but only 2 of 6 over 12s.",
+        good: false,
+      },
+    ]);
+  });
+
+  it("names the longest rally when it is well clear of the typical one, and who won it", () => {
+    // Median 10s; the 40s rally is four times that and went to them.
+    const moments = rallyMoments(
+      rallySeries([
+        [8, true],
+        [9, false],
+        [10, true],
+        [10, false],
+        [11, true],
+        [12, false],
+        [40, false],
+      ]),
+    );
+
+    expect(moments).toEqual([
+      { key: "rally-longest", text: "They won the longest rally at 40s.", good: false },
+    ]);
+  });
+
+  it("names a run of long rallies won in a row", () => {
+    const moments = rallyMoments(
+      rallySeries([
+        [8, true],
+        [9, false],
+        [10, true],
+        [11, false],
+        [12, true],
+        [13, true],
+        [14, true],
+      ]),
+    );
+
+    expect(moments).toEqual([
+      {
+        key: "rally-edge",
+        text: "You won 3 of 3 rallies over 11s and 2 of 4 up to 11s.",
+        good: true,
+      },
+      { key: "rally-run", text: "You won 3 rallies over 11s in a row.", good: true },
+    ]);
+  });
+
+  it("keeps the two strongest lines, longest first", () => {
+    // Median 10s. Long: won 3 of 4, including a run of three. Short: won 1 of 5.
+    // The 40s rally is the strongest line, then the edge; the run is left out.
+    const moments = rallyMoments(
+      rallySeries([
+        [6, false],
+        [7, false],
+        [8, true],
+        [9, false],
+        [10, false],
+        [11, true],
+        [12, true],
+        [13, true],
+        [40, false],
+      ]),
+    );
+
+    expect(moments.map((moment) => moment.key)).toEqual(["rally-longest", "rally-edge"]);
+    expect(moments[1]?.text).toBe("You won 3 of 4 rallies over 10s, but only 1 of 5 up to 10s.");
   });
 });
