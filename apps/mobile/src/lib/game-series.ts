@@ -1,4 +1,4 @@
-import type { MatchConfig, PointEvent } from "@holy-padel/scoring";
+import type { MatchConfig, PointEvent, TeamId } from "@holy-padel/scoring";
 import { replayMatch } from "@holy-padel/scoring";
 
 /** One point inside a game: when it was played and the lead after it. */
@@ -6,10 +6,12 @@ export interface GameSeriesStep {
   readonly t: number;
   /** Points for team A minus points for team B, within the game. */
   readonly lead: number;
+  /** The team that won the rally (a hand-out is won by the receiver). */
+  readonly winner: TeamId;
   /**
-   * True when the serve changed hands on this rally (a hand-out in HIHO
-   * squash, a break of serve in padel) — marked on the score-race chart so
-   * serve stretches read as plateaus between markers.
+   * True when a squash HI-HO rally was won by the receiver: no point is
+   * scored and the serve passes. Marked on the score-race chart so serve
+   * stretches read as plateaus between markers. Padel and PAR never set it.
    */
   readonly handOut: boolean;
 }
@@ -31,6 +33,21 @@ interface OpenGame {
   readonly a: number;
   readonly b: number;
   readonly steps: readonly GameSeriesStep[];
+}
+
+/** The in-game score after a rally: the engine's squash game points when it gives them, else a count. */
+function scoreAfterRally(
+  current: OpenGame,
+  winner: TeamId,
+  squashPoints: { readonly A: number; readonly B: number } | undefined,
+): { readonly a: number; readonly b: number } {
+  if (squashPoints !== undefined) {
+    return { a: squashPoints.A, b: squashPoints.B };
+  }
+  return {
+    a: current.a + (winner === "A" ? 1 : 0),
+    b: current.b + (winner === "B" ? 1 : 0),
+  };
 }
 
 function closeGame(open: OpenGame, games: GameSeries[]): void {
@@ -79,17 +96,25 @@ export function computeGameSeries(
       open = { setNumber: before.setNumber, a: 0, b: 0, steps: [] };
     }
     const current: OpenGame = open;
-    const a = event.winner === "A" ? current.a + 1 : current.a;
-    const b = event.winner === "B" ? current.b + 1 : current.b;
+    // Squash HI-HO awards no point to a receiver's rally, so the lead must
+    // come from the engine's game points rather than from counting winners.
+    // A game-ending rally always scores (only points end a game), and the
+    // snapshot after it already shows the next game, so count it directly.
+    const squashPoints =
+      gameFinished || setFinished || after.currentGame?.kind !== "squash"
+        ? undefined
+        : after.currentGame.points;
+    const { a, b } = scoreAfterRally(current, event.winner, squashPoints);
     const handOut =
+      config.sport === "squash" &&
+      config.squashMode === "hiho" &&
       before.servingTeam !== undefined &&
-      after.servingTeam !== undefined &&
-      after.servingTeam !== before.servingTeam;
+      event.winner !== before.servingTeam;
     open = {
       setNumber: current.setNumber,
       a,
       b,
-      steps: [...current.steps, { t: event.at, lead: a - b, handOut }],
+      steps: [...current.steps, { t: event.at, lead: a - b, winner: event.winner, handOut }],
     };
     previousTotalGames = after.totalGames;
     previousSetCount = after.completedSets.length;
