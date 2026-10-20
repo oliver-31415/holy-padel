@@ -58,7 +58,8 @@
           }
         }
       ],
-      "./plugins/with-health-connect.js"
+      "./plugins/with-health-connect.js",
+      "./plugins/with-gradle-perf.js"
     ],
     "experiments": {
       "typedRoutes": true
