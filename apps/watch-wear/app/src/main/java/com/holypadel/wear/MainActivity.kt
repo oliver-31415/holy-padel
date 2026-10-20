@@ -2,7 +2,6 @@ package com.holypadel.wear
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -10,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.holypadel.wear.ui.CourtColors
 import com.holypadel.wear.ui.WatchApp
@@ -34,20 +32,19 @@ class MainActivity : ComponentActivity() {
     private var permissionRequested = false
 
     private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
-            // Start regardless of the exact grants — the tracker self-gates on the
-            // heart-rate permission and simply stays idle if it was declined; a
-            // scoreboard with no bpm is completely fine.
-            if (grants.values.any { it }) {
-                tracker.start(pendingStartedAt)
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+            // Only the heart-rate grant matters: the service needs it to promote to a
+            // health foreground service. If it was declined the scoreboard simply runs
+            // without bpm, which is fine.
+            if (hasHeartRatePermission(this)) {
+                ExerciseService.start(this, pendingStartedAt)
             }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sync = WatchSync(this)
-        tracker = ExerciseTracker(this)
-        tracker.onSummary = { summary -> sync.sendWorkout(summary) }
+        tracker = ExerciseSession.tracker(this)
 
         // Drive the exercise session from phase transitions in the mirrored state.
         lifecycleScope.launch {
@@ -109,25 +106,21 @@ class MainActivity : ComponentActivity() {
 
     private fun startTracking(startedAt: Long) {
         pendingStartedAt = startedAt
-        val heartRatePermission = if (Build.VERSION.SDK_INT >= 36) {
-            // Wear OS 6 (API 36) replaces BODY_SENSORS with granular health permissions.
-            "android.permission.health.READ_HEART_RATE"
-        } else {
-            Manifest.permission.BODY_SENSORS
-        }
-        val granted = ContextCompat.checkSelfPermission(this, heartRatePermission) ==
-            PackageManager.PERMISSION_GRANTED
         // Already granted (e.g. a previous match): start straight away, no prompt.
         // Otherwise ask exactly once per process; if it's declined we simply never
         // ask again and the scoreboard runs on without any fitness data. Either
         // way the UI is already up and fully interactive — nothing gates on this.
         when {
-            granted -> tracker.start(startedAt)
+            hasHeartRatePermission(this) -> ExerciseService.start(this, startedAt)
             !permissionRequested -> {
                 permissionRequested = true
-                permissionLauncher.launch(
-                    arrayOf(heartRatePermission, Manifest.permission.ACTIVITY_RECOGNITION),
-                )
+                val permissions = buildList {
+                    add(heartRatePermission())
+                    add(Manifest.permission.ACTIVITY_RECOGNITION)
+                    // Runtime notification permission only exists from API 33.
+                    if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                permissionLauncher.launch(permissions.toTypedArray())
             }
         }
     }
@@ -140,11 +133,5 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         sync.stop()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        // The scoreboard is the workout: leaving the app for good ends the session.
-        tracker.end()
     }
 }

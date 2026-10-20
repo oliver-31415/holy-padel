@@ -14,6 +14,12 @@
         android:maxSdkVersion="35" />
     <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <!-- The match exercise runs in a foreground service so closing the app or dimming
+         the screen does not cut heart rate short. POST_NOTIFICATIONS (API 33+) lets
+         its ongoing notification show. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -54,6 +60,12 @@
                 android:name="androidx.wear.tiles.PREVIEW"
                 android:resource="@drawable/tile_preview" />
         </service>
+
+        <!-- Owns the match's Health Services exercise while the match is live. -->
+        <service
+            android:name=".ExerciseService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
 
         <!-- Refreshes the tile on every phone state push, even with the app closed. -->
         <service

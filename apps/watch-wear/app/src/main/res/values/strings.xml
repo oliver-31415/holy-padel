@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Holy Padel</string>
+    <string name="exercise_channel_name">Live match heart rate</string>
+    <string name="exercise_notification_text">Tracking heart rate for this match</string>
 </resources>
