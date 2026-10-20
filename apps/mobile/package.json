@@ -11,6 +11,7 @@
     "lint": "biome check .",
     "typecheck": "tsc && tsc -p e2e && tsc -p test",
     "e2e": "playwright test",
+    "e2e:changed": "node scripts/e2e-changed.mjs",
     "e2e:ui": "playwright test --ui",
     "test": "vitest run",
     "e2e:native": "maestro test .maestro"

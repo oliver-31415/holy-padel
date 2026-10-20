@@ -14,8 +14,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: CI !== undefined,
   retries: CI === undefined ? 0 : 2,
-  // CI runners are small: cap parallelism so the sqlite worker keeps up.
-  ...(CI === undefined ? {} : { workers: 2 }),
+  // Small runners (CI and a laptop running Metro alongside): cap parallelism so
+  // the sqlite worker and the dev server keep up. `--workers` still overrides.
+  workers: 2,
   timeout: 120_000,
   expect: { timeout: 15_000 },
   reporter: CI === undefined ? "list" : "github",
@@ -37,7 +38,12 @@ export default defineConfig({
     reuseExistingServer: CI === undefined,
     // The e2e fixture ledger — real installs never seed demo data. The mock
     // watch count exercises the "Synced — N watches connected" UI on web.
-    env: { EXPO_PUBLIC_SEED_DEMO: "1", EXPO_PUBLIC_MOCK_WATCH_COUNT: "2" },
+    // The heap cap keeps Metro from ballooning on long local runs.
+    env: {
+      EXPO_PUBLIC_SEED_DEMO: "1",
+      EXPO_PUBLIC_MOCK_WATCH_COUNT: "2",
+      NODE_OPTIONS: "--max-old-space-size=6144",
+    },
     // Metro's first cold bundle on a CI runner can take several minutes.
     timeout: 420_000,
   },
