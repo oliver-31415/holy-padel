@@ -15,7 +15,7 @@ const xOf = (t: number): number => t / 1000;
 const yOf = (lead: number): number => -lead;
 
 function step(t: number, lead: number, winner: "A" | "B", handOut = false): GameSeriesStep {
-  return { t, lead, winner, handOut };
+  return { t, lead, winner, handOut, points: { A: 0, B: 0 }, setGames: { A: 0, B: 0 } };
 }
 
 function pathsFor(steps: readonly GameSeriesStep[], startedAt = 0, endX = 10) {
@@ -95,6 +95,26 @@ describe("handOutMarks", () => {
   it("is empty when nothing was a hand-out (padel, PAR)", () => {
     const steps = [step(1000, 1, "A"), step(2000, 2, "A")];
     expect(handOutMarks(steps, xOf, yOf)).toEqual([]);
+  });
+
+  it("drops a hand-out that sits too close to the last kept one", () => {
+    const steps = [
+      step(1000, 1, "A"),
+      step(2000, 1, "B", true),
+      step(4000, 0, "B", true),
+      step(5000, 0, "A"),
+      step(20_000, 0, "B", true),
+    ];
+    const keys = handOutMarks(steps, xOf, yOf, 5).map((mark) => mark.key);
+    expect(keys).toEqual(["h1", "h4"]);
+    expect(handOutMarks(steps, xOf, yOf).map((mark) => mark.key)).toEqual(["h1", "h2", "h4"]);
+  });
+
+  it("measures spacing from the last kept mark, not the last hand-out", () => {
+    // At x 0, 4 and 8 with a gap of 5: the mark at 4 is dropped, and the one at
+    // 8 is 8 from the kept mark at 0 (kept), though only 4 from the dropped one.
+    const steps = [step(0, 1, "B", true), step(4000, 1, "B", true), step(8000, 1, "B", true)];
+    expect(handOutMarks(steps, xOf, yOf, 5).map((mark) => mark.key)).toEqual(["h0", "h2"]);
   });
 });
 

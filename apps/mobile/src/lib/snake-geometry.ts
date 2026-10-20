@@ -210,17 +210,30 @@ export function leadScale(range: LeadRange, plotTop: number, plotBottom: number)
  * A tick on the line at each hand-out: where the receiver won the rally and
  * the serve passed, coloured by the team that won it (the team now serving).
  * Padel and PAR never set `handOut`, so they get no marks.
+ *
+ * With `minSpacing` (in the x units `xOf` returns), a mark closer than that to
+ * the last kept mark is dropped, so a run of hand-outs reads as one tick rather
+ * than a smear. The earliest mark in a run is the one kept.
  */
 export function handOutMarks(
   steps: readonly GameSeriesStep[],
   xOf: (t: number) => number,
   yOf: (lead: number) => number,
+  minSpacing = 0,
 ): HandOutMark[] {
-  return steps.flatMap((step, index) =>
-    step.handOut
-      ? [{ key: `h${String(index)}`, x: xOf(step.t), y: yOf(step.lead), team: step.winner }]
-      : [],
-  );
+  const marks: HandOutMark[] = [];
+  for (const [index, step] of steps.entries()) {
+    if (!step.handOut) {
+      continue;
+    }
+    const x = xOf(step.t);
+    const previous = marks.at(-1);
+    if (previous !== undefined && x - previous.x < minSpacing) {
+      continue;
+    }
+    marks.push({ key: `h${String(index)}`, x, y: yOf(step.lead), team: step.winner });
+  }
+  return marks;
 }
 
 /**

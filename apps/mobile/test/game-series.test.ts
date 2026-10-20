@@ -104,4 +104,51 @@ describe("computeGameSeries", () => {
       expect(game.steps.every((step) => !step.handOut)).toBe(true);
     }
   });
+
+  it("records the in-game points and the server after every rally", () => {
+    const [game] = computeGameSeries(config, events);
+    expect(game?.steps.map((step) => step.points)).toEqual([
+      { A: 1, B: 0 },
+      { A: 2, B: 0 },
+      { A: 3, B: 0 },
+      { A: 4, B: 0 },
+      { A: 4, B: 0 },
+      { A: 4, B: 1 },
+      { A: 4, B: 1 },
+    ]);
+    // B takes serve on its hand-out, so the rally after it is served by B.
+    expect(game?.steps.map((step) => step.serving)).toEqual(["A", "A", "A", "A", "A", "B", "B"]);
+  });
+
+  it("keeps the set's games at zero while no game has finished", () => {
+    const [game] = computeGameSeries(config, events);
+    expect(game?.steps.every((step) => step.setGames.A === 0 && step.setGames.B === 0)).toBe(true);
+  });
+
+  it("counts a finished game in the set's games, from the rally that ends it", () => {
+    const padel: MatchConfig = {
+      bestOf: 1,
+      deuceMode: "advantage",
+      thirdSet: "fullSet",
+      firstServe: "A",
+      firstServePending: false,
+      firstServeOriginallyUndecided: false,
+    };
+    const padelEvents: PointEvent[] = [
+      { winner: "A", at: 0 },
+      { winner: "A", at: 1000 },
+      { winner: "A", at: 2000 },
+      { winner: "A", at: 3000 },
+      { winner: "B", at: 4000 },
+      { winner: "B", at: 5000 },
+      { winner: "B", at: 6000 },
+      { winner: "B", at: 7000 },
+    ];
+    const [first, second] = computeGameSeries(padel, padelEvents);
+    expect(first?.steps.at(-1)?.setGames).toEqual({ A: 1, B: 0 });
+    // The next game starts from the set's score, and its points restart at zero.
+    expect(second?.steps[0]?.setGames).toEqual({ A: 1, B: 0 });
+    expect(second?.steps[0]?.points).toEqual({ A: 0, B: 1 });
+    expect(second?.steps.at(-1)?.setGames).toEqual({ A: 1, B: 1 });
+  });
 });
