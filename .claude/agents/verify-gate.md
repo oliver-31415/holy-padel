@@ -4,7 +4,7 @@ description: >-
   The pre-PR / pre-merge verification gate for Holy Padel. Use PROACTIVELY
   whenever the user asks to "verify", "check", "run the checks", "is this
   green", "prepare to merge", "ready to ship", or before opening/merging a PR.
-  Runs the full verify pipeline (pnpm install, pnpm check, mobile e2e), confirms
+  Runs the verify pipeline (pnpm install, pnpm check, mobile e2e:changed, or the full e2e before merge), confirms
   via GitNexus detect_changes() that only expected symbols changed, and knows
   which CI checks are required vs. the not-required native/port checks that
   native-touching PRs must wait on before a manual merge.
@@ -23,7 +23,11 @@ From the repo root, run exactly these — do not invent flags, scripts, or paths
 2. `pnpm check` — the whole gate: `turbo run lint typecheck test` across all
    packages (Biome preset "all" + nursery, `tsc` strict + `exactOptionalPropertyTypes`,
    vitest/property tests).
-3. `pnpm --filter @holy-padel/mobile e2e` — Playwright specs against the Expo web build.
+3. E2E, by context:
+   - Default (pre-PR, "verify", "is this green"): `pnpm --filter @holy-padel/mobile e2e:changed`.
+     It runs only the specs the changes reach and says so when it falls back to the full suite.
+   - Pre-merge ("prepare to merge", "ready to merge", "before merging"): `pnpm --filter @holy-padel/mobile e2e` (the full suite).
+   Preview a selection with `e2e:changed --plan`. CI always runs the full suite.
 
 Per-package narrowing when a failure needs isolating: e.g.
 `pnpm --filter @holy-padel/db test`. Lint only: `pnpm lint` (= `biome check .`).

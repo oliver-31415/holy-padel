@@ -35,11 +35,15 @@ the **leading source of truth** for all scoring behaviour — when in doubt, the
 ```sh
 pnpm install
 pnpm check                                   # biome + typecheck + unit/property tests, all packages
-pnpm --filter @holy-padel/mobile e2e         # Playwright specs vs the Expo web build
+pnpm --filter @holy-padel/mobile e2e:changed # only the Playwright specs your changes can affect
 ```
-Per package: `pnpm --filter @holy-padel/db test`, etc. Unit tests use `vitest`; the DB tests run on `node:sqlite` via `test/memory-driver.ts`.
+`e2e:changed` diffs against `main` plus the working tree and runs the matching specs; anything it cannot map (shared `src/lib|components|theme|db|watch`, `packages/**`, `e2e/helpers.ts`, config) falls back to the full suite. Use `--plan` to see the selection without running, `--full` to force everything. Run the full `pnpm --filter @holy-padel/mobile e2e` before merging; CI runs it anyway.
+
+Per package: `pnpm --filter @holy-padel/db test`, etc. Unit tests use `vitest`; the DB tests run on `node:sqlite` via `test/memory-driver.ts`. Turbo caches `lint`/`typecheck`/`test` per package, so a repeat `pnpm check` with no changes replays from cache.
 
 ## Building & running natively
+
+Gradle speed-ups (build cache, parallel, 3 GB heap, 2 workers) are set in `apps/mobile/plugins/with-gradle-perf.js` and `apps/watch-wear/gradle.properties`. Run `npx expo prebuild` to apply the plugin to the generated `android/`; `prebuild --clean` regenerates it from scratch. Configuration cache stays off.
 
 **This is a dev-client app — Expo Go cannot run it** (custom native modules + a watch target). See the **`ios-build-run` skill** in `.claude/skills/` for the full recipe. In short, on this machine:
 
@@ -81,7 +85,7 @@ This repo ships a committed agentic workspace. Prefer these over ad-hoc work —
 
 - **Subagents** (`.claude/agents/`) — delegate to these; they auto-trigger by task:
   `scoring-guardian` (FIP engine + spec + vectors), `engine-port-parity` (Swift/Kotlin ports vs `golden.json`), `watch-sync-specialist` (phone↔watch contract + native), `design-system-keeper` (Court Bold tokens across platforms), `verify-gate` (pre-merge checks + required-vs-native CI), `holy-padel-reviewer` (repo-tuned review).
-- **Slash commands** (`.claude/commands/`) — `/verify` (install → check → e2e), `/regen-vectors` (regen `golden.json` + port tests), `/ship-pr` (gitmoji micro-commits → PR → manual merge after native jobs green), `/new-native-module` (the Expo-module triad).
+- **Slash commands** (`.claude/commands/`) — `/verify` (install → check → e2e:changed), `/regen-vectors` (regen `golden.json` + port tests), `/ship-pr` (gitmoji micro-commits → PR → manual merge after native jobs green), `/new-native-module` (the Expo-module triad).
 - **Skills** (`.claude/skills/`) — `ios-build-run` (dev-client build/run + fast watch rebuild), `gitnexus/*` (code-intelligence CLI).
 - **Path rules** (`.claude/rules/`) — load automatically when you open matching files: `scoring`, `watch`, `design`, `native-modules`, `typescript`.
 - **Enforced config** — `.claude/settings.json` (permission allowlist, UTF-8/telemetry env, a Biome auto-format hook in `.claude/hooks/`), and `.mcp.json` (the GitNexus MCP server). Personal overrides go in the git-ignored `.claude/settings.local.json`.

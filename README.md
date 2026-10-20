@@ -166,10 +166,10 @@ runtime for native testing. Use a dev build for iOS/Android.
 
 ```sh
 pnpm check
-pnpm --filter @holy-padel/mobile e2e
+pnpm --filter @holy-padel/mobile e2e:changed
 ```
 
-`pnpm check` runs Biome, TypeScript, and unit/property tests across the workspace.
+`pnpm check` runs Biome, TypeScript, and unit/property tests across the workspace (Turbo caches them per package). `e2e:changed` runs only the Playwright specs your changes can reach; `--plan` previews the selection and `--full` runs the whole suite. CI and pre-merge runs use the full `e2e`.
 The mobile E2E suite runs Playwright against the Expo web build with a fresh local
 database per spec.
 

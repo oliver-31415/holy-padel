@@ -41,7 +41,7 @@ are the leading source of truth for all scoring.
 ```sh
 pnpm install
 pnpm check                              # Biome + tsc + unit/property tests, all packages
-pnpm --filter @holy-padel/mobile e2e    # Playwright vs the Expo web build
+pnpm --filter @holy-padel/mobile e2e:changed    # Playwright specs your changes affect (full `e2e` before merge)
 ```
 
 ## CI & merging
