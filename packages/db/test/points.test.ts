@@ -66,7 +66,7 @@ describe("lifetime points", () => {
 });
 
 describe("match heart rate storage", () => {
-  it("round-trips the watch samples and rejects malformed blobs", () => {
+  it("round-trips the watch samples and ignores malformed readings", () => {
     const driver = seededDriver();
     saveMatchHeartRate(driver, "m1", [
       { t: 1000, bpm: 140 },
@@ -78,7 +78,10 @@ describe("match heart rate storage", () => {
     ]);
 
     saveMatchHeartRate(driver, "m1", [{ t: 3000, bpm: 900 }]);
-    expect(loadMatchHeartRate(driver, "m1")).toBeUndefined();
+    expect(loadMatchHeartRate(driver, "m1")).toEqual([
+      { t: 1000, bpm: 140 },
+      { t: 2000, bpm: 152 },
+    ]);
 
     saveMatchHeartRate(driver, "m2", []);
     expect(loadMatchHeartRate(driver, "m2")).toBeUndefined();
