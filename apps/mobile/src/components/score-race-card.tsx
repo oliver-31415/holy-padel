@@ -146,6 +146,8 @@ export function ScoreRaceCard({
         steps={game.steps}
         startedAt={window.from}
         endedAt={window.to}
+        pointsA={game.pointsA}
+        pointsB={game.pointsB}
         {...(heartRate === undefined ? {} : { heartRate })}
       />
 

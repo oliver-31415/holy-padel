@@ -8,7 +8,6 @@ import Svg, {
   Line,
   LinearGradient,
   Path,
-  Rect,
   Stop,
   // Imported as `Text` (not aliased) so the raw-text lint recognises label children.
   Text,
@@ -18,6 +17,16 @@ import { Body } from "@/components/ui.tsx";
 import type { BpmScale, HeartRateSpan } from "@/lib/game-activity.ts";
 import { bpmScale, heartRateRuns } from "@/lib/game-activity.ts";
 import type { GameSeriesStep } from "@/lib/game-series.ts";
+import type { LeadTone } from "@/lib/snake-geometry.ts";
+import {
+  endLabelSlot,
+  handOutMarks,
+  leadPaths,
+  leadRange,
+  leadScale,
+  leadSegments,
+  toneOf,
+} from "@/lib/snake-geometry.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
 
 const CHART_HEIGHT = 176;
@@ -28,65 +37,46 @@ const PAD_TOP = 16;
 /** Room under the plot for the time axis. */
 const PAD_BOTTOM = 22;
 const PLOT_BOTTOM = CHART_HEIGHT - PAD_BOTTOM;
-const ZERO_Y = (PAD_TOP + PLOT_BOTTOM) / 2;
-const HALF = (PLOT_BOTTOM - PAD_TOP) / 2;
-const LINE_WIDTH = 2.75;
+/** One stroke width for the whole lead line; its ends and joins are round. */
+const LINE_WIDTH = 2.5;
+/** A hand-out tick reaches this far either side of the line. */
+const TICK_HALF = 6;
+const TICK_WIDTH = 2.5;
+const END_DOT = 4.5;
+const END_HALO = 9;
 
 interface Point {
   readonly x: number;
   readonly y: number;
 }
 
-interface Run {
-  readonly key: string;
-  readonly x1: number;
-  readonly x2: number;
-  readonly lead: number;
-}
-
-interface Riser {
-  readonly key: string;
-  readonly x: number;
-  readonly from: number;
-  readonly to: number;
-}
-
 interface Geometry {
   readonly xOf: (t: number) => number;
   readonly yOf: (lead: number) => number;
-  readonly maxLead: number;
+  /** The zero line's y, which moves with the fitted range. */
+  readonly zeroY: number;
 }
 
-const leadColor = (lead: number): string => (lead >= 0 ? colors.accent : colors.teamB);
+/** Team A is the accent, team B its runtime colour, and level is a neutral ink. */
+function toneColor(tone: LeadTone): string {
+  if (tone === "A") {
+    return colors.accent;
+  }
+  return tone === "B" ? colors.teamB : textAlpha(0.35);
+}
+
+/** The final score's label: the leader's colour, readable on the card. */
+function scoreFill(tone: LeadTone): string {
+  if (tone === "A") {
+    return colors.accentOnCard;
+  }
+  return tone === "B" ? colors.teamB : textAlpha(0.6);
+}
 
 /** "3:07" — minutes and seconds into the game. */
 function clockLabel(ms: number): string {
   const total = Math.max(0, Math.round(ms / 1000));
   return `${String(Math.floor(total / 60))}:${String(total % 60).padStart(2, "0")}`;
-}
-
-/** Horizontal runs (the lead held between rallies) and the risers between them. */
-function runsOf(
-  steps: readonly GameSeriesStep[],
-  xOf: (t: number) => number,
-  endX: number,
-): { readonly runs: Run[]; readonly risers: Riser[] } {
-  const runs: Run[] = [];
-  const risers: Riser[] = [];
-  steps.forEach((step, index) => {
-    const next = steps[index + 1];
-    const x1 = xOf(step.t);
-    runs.push({
-      key: `r${String(index)}`,
-      x1,
-      x2: next === undefined ? endX : xOf(next.t),
-      lead: step.lead,
-    });
-    if (next !== undefined && next.lead !== step.lead) {
-      risers.push({ key: `v${String(index)}`, x: xOf(next.t), from: step.lead, to: next.lead });
-    }
-  });
-  return { runs, risers };
 }
 
 /**
@@ -111,39 +101,6 @@ function smoothPath(points: readonly Point[]): string {
     }
   }
   return d;
-}
-
-/** Dashed guides at the deepest lead each way, labelled with the margin. */
-function LeadGuides({
-  geometry,
-  plotRight,
-}: {
-  readonly geometry: Geometry;
-  readonly plotRight: number;
-}): ReactNode {
-  const { yOf, maxLead } = geometry;
-  return (
-    <>
-      {[maxLead, -maxLead].map((lead) => (
-        <Line
-          key={`g${String(lead)}`}
-          x1={PAD_X}
-          y1={yOf(lead)}
-          x2={plotRight}
-          y2={yOf(lead)}
-          stroke={textAlpha(0.1)}
-          strokeWidth={1}
-          strokeDasharray="3 5"
-        />
-      ))}
-      <Text x={PAD_X} y={yOf(maxLead) - 4} fontSize={9} fontWeight="700" fill={colors.accentOnCard}>
-        {`A +${String(maxLead)}`}
-      </Text>
-      <Text x={PAD_X} y={yOf(-maxLead) - 4} fontSize={9} fontWeight="700" fill={textAlpha(0.45)}>
-        {`B +${String(maxLead)}`}
-      </Text>
-    </>
-  );
 }
 
 /** The bpm axis down the right gutter: round-number ticks, dotted guides, unit. */
@@ -287,85 +244,108 @@ function HeartRateLayer({
   );
 }
 
-/** The lead itself: shaded area to the zero line, step line, serve ticks, end dot. */
+/**
+ * The lead itself: a faint fill between the line and the zero line, one
+ * stepped line from the origin, hand-out ticks in the winner's colour, and an
+ * end dot with the final score.
+ */
 function LeadLayer({
   steps,
   geometry,
+  startedAt,
   endX,
+  pointsA,
+  pointsB,
 }: {
   readonly steps: readonly GameSeriesStep[];
   readonly geometry: Geometry;
+  readonly startedAt: number;
   readonly endX: number;
+  readonly pointsA: number;
+  readonly pointsB: number;
 }): ReactNode {
-  const { xOf, yOf } = geometry;
-  const { runs, risers } = runsOf(steps, xOf, endX);
+  const { xOf, yOf, zeroY } = geometry;
+  const paths = leadPaths({ steps, startedAt, endX, xOf, yOf, zeroY });
+  const marks = handOutMarks(steps, xOf, yOf);
   const last = steps.at(-1);
-  const lastX = last === undefined ? undefined : xOf(last.t);
+  const endTone: LeadTone = last === undefined ? "even" : toneOf(last.lead);
+  const endY = yOf(last?.lead ?? 0);
+  const endText = `${String(pointsA)}–${String(pointsB)}`;
+  // The label keeps off the line, its ticks, and the zero line, and stays above the time axis.
+  const slot = endLabelSlot({
+    endX,
+    endY,
+    text: endText,
+    clearance: END_HALO + 3,
+    segments: [
+      ...leadSegments({ steps, startedAt, endX, xOf, yOf }),
+      { x1: PAD_X, y1: zeroY, x2: endX, y2: zeroY },
+      ...marks.map((mark) => ({
+        x1: mark.x,
+        y1: mark.y - TICK_HALF,
+        x2: mark.x,
+        y2: mark.y + TICK_HALF,
+      })),
+    ],
+    topLimit: 0,
+    bottomLimit: PLOT_BOTTOM + 4,
+  });
   return (
     <>
-      {runs.map((run) =>
-        run.lead === 0 ? null : (
-          <Rect
-            key={`${run.key}f`}
-            x={run.x1}
-            y={Math.min(yOf(run.lead), ZERO_Y)}
-            width={Math.max(0, run.x2 - run.x1)}
-            height={Math.abs(yOf(run.lead) - ZERO_Y)}
-            fill={leadColor(run.lead)}
-            fillOpacity={0.14}
-          />
+      {paths.map((path) =>
+        path.tone === "even" ? null : (
+          <Path key={`${path.key}f`} d={path.area} fill={toneColor(path.tone)} fillOpacity={0.1} />
         ),
       )}
-      <Line x1={PAD_X} y1={ZERO_Y} x2={endX} y2={ZERO_Y} stroke={textAlpha(0.18)} strokeWidth={1} />
-      {runs.map((run) => (
-        <Line
-          key={run.key}
-          x1={run.x1}
-          y1={yOf(run.lead)}
-          x2={run.x2}
-          y2={yOf(run.lead)}
-          stroke={run.lead === 0 ? textAlpha(0.35) : leadColor(run.lead)}
+      <Line x1={PAD_X} y1={zeroY} x2={endX} y2={zeroY} stroke={textAlpha(0.18)} strokeWidth={1} />
+      {paths.map((path) => (
+        <Path
+          key={path.key}
+          d={path.d}
+          fill="none"
+          stroke={toneColor(path.tone)}
           strokeWidth={LINE_WIDTH}
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
       ))}
-      {risers.map((riser) => (
-        <Line
-          key={riser.key}
-          x1={riser.x}
-          y1={yOf(riser.from)}
-          x2={riser.x}
-          y2={yOf(riser.to)}
-          stroke={leadColor(riser.from === 0 ? riser.to : riser.from)}
-          strokeWidth={LINE_WIDTH}
-          strokeLinecap="round"
-        />
-      ))}
-      {steps.map((step, index) =>
-        step.handOut && index > 0 ? (
+      {marks.map((mark) => (
+        <G key={mark.key}>
+          {/* A card-coloured halo keeps the tick legible where it crosses the line. */}
           <Line
-            key={`h${String(index)}`}
-            x1={xOf(step.t)}
-            y1={ZERO_Y - 4}
-            x2={xOf(step.t)}
-            y2={ZERO_Y + 4}
-            stroke={colors.text}
-            strokeOpacity={0.55}
-            strokeWidth={1.5}
+            x1={mark.x}
+            y1={mark.y - TICK_HALF}
+            x2={mark.x}
+            y2={mark.y + TICK_HALF}
+            stroke={colors.card}
+            strokeWidth={TICK_WIDTH + 2}
             strokeLinecap="round"
           />
-        ) : null,
-      )}
-      {last === undefined || lastX === undefined ? null : (
-        <>
-          <Circle
-            cx={lastX}
-            cy={yOf(last.lead)}
-            r={9}
-            fill={leadColor(last.lead)}
-            fillOpacity={0.2}
+          <Line
+            x1={mark.x}
+            y1={mark.y - TICK_HALF}
+            x2={mark.x}
+            y2={mark.y + TICK_HALF}
+            stroke={toneColor(mark.team)}
+            strokeWidth={TICK_WIDTH}
+            strokeLinecap="round"
           />
-          <Circle cx={lastX} cy={yOf(last.lead)} r={4.5} fill={leadColor(last.lead)} />
+        </G>
+      ))}
+      {last === undefined ? null : (
+        <>
+          <Circle cx={endX} cy={endY} r={END_HALO} fill={toneColor(endTone)} fillOpacity={0.2} />
+          <Circle cx={endX} cy={endY} r={END_DOT} fill={toneColor(endTone)} />
+          <Text
+            x={slot.x}
+            y={slot.y}
+            fontSize={10}
+            fontWeight="800"
+            fill={scoreFill(endTone)}
+            textAnchor="end"
+          >
+            {endText}
+          </Text>
         </>
       )}
     </>
@@ -398,13 +378,16 @@ function LegendDot({
 
 /**
  * The score-race "snake": who led, by how much, rally by rally through one
- * game, over the game's real time — with the watch-tracked heart rate as a
- * smooth curve on its own scale behind it.
+ * game, over the game's real time — starting from level at the origin and
+ * ending on the final score, with the watch-tracked heart rate as a smooth
+ * curve on its own scale behind it.
  */
 export function SnakeChart({
   steps,
   startedAt,
   endedAt,
+  pointsA,
+  pointsB,
   heartRate,
   width: fixedWidth,
 }: {
@@ -412,6 +395,9 @@ export function SnakeChart({
   /** Start of the plotted window (the end of the previous game). */
   readonly startedAt: number;
   readonly endedAt: number;
+  /** The game's final points, labelled at the end of the line. */
+  readonly pointsA: number;
+  readonly pointsB: number;
   readonly heartRate?: readonly HeartRateSample[];
   readonly width?: number;
 }): ReactNode {
@@ -424,13 +410,15 @@ export function SnakeChart({
   const hasHeartRate = (heartRate?.length ?? 0) > 0;
   const plotRight = width - (hasHeartRate ? HR_AXIS : PAD_X);
   const plotWidth = Math.max(0, plotRight - PAD_X);
-  const maxLead = Math.max(3, ...steps.map((step) => Math.abs(step.lead)));
+  // The y range fits the data: zero always shown, the furthest lead each way, plus headroom.
+  const { zeroY, yOf } = leadScale(leadRange(steps.map((step) => step.lead)), PAD_TOP, PLOT_BOTTOM);
   const geometry: Geometry = {
     xOf: (t) => PAD_X + Math.min(1, Math.max(0, (t - startedAt) / span)) * plotWidth,
-    yOf: (lead) => ZERO_Y - (lead / maxLead) * HALF,
-    maxLead,
+    yOf,
+    zeroY,
   };
   const endX = plotRight;
+  const hasHandOuts = steps.some((step) => step.handOut);
 
   return (
     <View
@@ -443,7 +431,6 @@ export function SnakeChart({
     >
       {width > 0 && (
         <Svg width={width} height={CHART_HEIGHT}>
-          <LeadGuides geometry={geometry} plotRight={plotRight} />
           {heartRate === undefined || scale === undefined ? null : (
             <HeartRateLayer
               spans={spans}
@@ -453,7 +440,14 @@ export function SnakeChart({
               width={width}
             />
           )}
-          <LeadLayer steps={steps} geometry={geometry} endX={endX} />
+          <LeadLayer
+            steps={steps}
+            geometry={geometry}
+            startedAt={startedAt}
+            endX={endX}
+            pointsA={pointsA}
+            pointsB={pointsB}
+          />
           <Text x={PAD_X} y={CHART_HEIGHT - 6} fontSize={9} fontWeight="700" fill={textAlpha(0.35)}>
             0:00
           </Text>
@@ -472,8 +466,8 @@ export function SnakeChart({
       <XStack alignItems="center" justifyContent="center" flexWrap="wrap" gap={14} marginTop={4}>
         <LegendDot color={colors.accent} label="TEAM A AHEAD" />
         <LegendDot color={colors.teamB} label="TEAM B AHEAD" />
-        {steps.some((step, index) => step.handOut && index > 0) ? (
-          <LegendDot color={colors.text} label="SERVE CHANGE" square={true} />
+        {hasHandOuts ? (
+          <LegendDot color={colors.text} label="HAND-OUT · NO POINT" square={true} />
         ) : null}
         {scale === undefined ? null : <LegendDot color={colors.danger} label="HEART RATE" />}
       </XStack>
