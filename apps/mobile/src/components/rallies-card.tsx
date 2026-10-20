@@ -37,7 +37,6 @@ function RallyStrip({ lengths }: { readonly lengths: RallyLengths }): ReactNode 
             // biome-ignore lint/suspicious/noArrayIndexKey: rallies are a fixed, ordered ledger
             key={index}
             flex={1}
-            maxWidth={10}
             height={Math.max(3, (rally.ms / longest) * STRIP_HEIGHT)}
             borderRadius={2}
             backgroundColor={rally.won ? colors.accent : textAlpha(0.18)}
