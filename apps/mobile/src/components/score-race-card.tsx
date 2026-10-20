@@ -1,4 +1,5 @@
 import type { HeartRateSample, MotionSample } from "@holy-padel/db";
+import type { TeamValues } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { ScrollView } from "react-native";
@@ -73,12 +74,15 @@ export function ScoreRaceCard({
   motion,
   matchStartedAt,
   sport,
+  names,
 }: {
   readonly series: readonly GameSeries[];
   readonly heartRate?: readonly HeartRateSample[];
   readonly motion?: readonly MotionSample[];
   readonly matchStartedAt: number;
   readonly sport?: "padel" | "squash" | "pickleball" | undefined;
+  /** Team names for the scrub readout's server. */
+  readonly names: TeamValues<string>;
 }): ReactNode {
   const [selected, setSelected] = useState<number | undefined>(undefined);
   if (series.length === 0) {
@@ -143,11 +147,14 @@ export function ScoreRaceCard({
       )}
 
       <SnakeChart
+        key={`${String(game.setNumber)}-${String(game.gameNumber)}`}
         steps={game.steps}
         startedAt={window.from}
         endedAt={window.to}
         pointsA={game.pointsA}
         pointsB={game.pointsB}
+        names={names}
+        squash={sport === "squash"}
         {...(heartRate === undefined ? {} : { heartRate })}
       />
 

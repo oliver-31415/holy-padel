@@ -1,6 +1,8 @@
 import type { HeartRateSample } from "@holy-padel/db";
+import type { TeamValues } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { View as NativeView } from "react-native";
 import Svg, {
   Circle,
   Defs,
@@ -13,10 +15,14 @@ import Svg, {
   Text,
 } from "react-native-svg";
 import { View, XStack } from "tamagui";
+import { ScrubReadoutRow } from "@/components/scrub-readout.tsx";
 import { Body } from "@/components/ui.tsx";
+import { useScrubGesture } from "@/components/use-scrub-gesture.ts";
 import type { BpmScale, HeartRateSpan } from "@/lib/game-activity.ts";
 import { bpmScale, heartRateRuns } from "@/lib/game-activity.ts";
 import type { GameSeriesStep } from "@/lib/game-series.ts";
+import { scoreHaptic } from "@/lib/haptics.ts";
+import { clockLabel, nearestStep, openingSetGames, scrubReadout } from "@/lib/score-scrub.ts";
 import type { LeadTone } from "@/lib/snake-geometry.ts";
 import {
   endLabelSlot,
@@ -42,8 +48,12 @@ const LINE_WIDTH = 2.5;
 /** A hand-out tick reaches this far either side of the line. */
 const TICK_HALF = 6;
 const TICK_WIDTH = 2.5;
+/** Hand-outs closer than this many pixels to the last tick drawn are left unmarked. */
+const TICK_SPACING = 12;
 const END_DOT = 4.5;
 const END_HALO = 9;
+/** The scrub cursor's ring around the rally it sits on. */
+const CURSOR_DOT = 5;
 
 interface Point {
   readonly x: number;
@@ -71,12 +81,6 @@ function scoreFill(tone: LeadTone): string {
     return colors.accentOnCard;
   }
   return tone === "B" ? colors.teamB : textAlpha(0.6);
-}
-
-/** "3:07" — minutes and seconds into the game. */
-function clockLabel(ms: number): string {
-  const total = Math.max(0, Math.round(ms / 1000));
-  return `${String(Math.floor(total / 60))}:${String(total % 60).padStart(2, "0")}`;
 }
 
 /**
@@ -266,7 +270,7 @@ function LeadLayer({
 }): ReactNode {
   const { xOf, yOf, zeroY } = geometry;
   const paths = leadPaths({ steps, startedAt, endX, xOf, yOf, zeroY });
-  const marks = handOutMarks(steps, xOf, yOf);
+  const marks = handOutMarks(steps, xOf, yOf, TICK_SPACING);
   const last = steps.at(-1);
   const endTone: LeadTone = last === undefined ? "even" : toneOf(last.lead);
   const endY = yOf(last?.lead ?? 0);
@@ -381,6 +385,10 @@ function LegendDot({
  * game, over the game's real time — starting from level at the origin and
  * ending on the final score, with the watch-tracked heart rate as a smooth
  * curve on its own scale behind it.
+ *
+ * Press and hold the chart, then drag along it, to scrub it: a cursor marks the
+ * rally under the finger, the readout names its server, score, heart rate and
+ * time, and each rally stepped onto ticks.
  */
 export function SnakeChart({
   steps,
@@ -388,7 +396,9 @@ export function SnakeChart({
   endedAt,
   pointsA,
   pointsB,
+  names,
   heartRate,
+  squash,
   width: fixedWidth,
 }: {
   readonly steps: readonly GameSeriesStep[];
@@ -398,10 +408,17 @@ export function SnakeChart({
   /** The game's final points, labelled at the end of the line. */
   readonly pointsA: number;
   readonly pointsB: number;
+  /** Team names for the scrub readout's server. */
+  readonly names: TeamValues<string>;
   readonly heartRate?: readonly HeartRateSample[];
+  /** Squash has no sets, so the scrub readout labels its cells POINTS and GAMES. */
+  readonly squash?: boolean;
   readonly width?: number;
 }): ReactNode {
   const [measured, setMeasured] = useState(0);
+  const [scrubbed, setScrubbed] = useState<number | undefined>(undefined);
+  // The rally the drag last landed on, so a tick fires once per step rather than per move event.
+  const lastScrubbed = useRef<number | undefined>(undefined);
   const width = fixedWidth ?? measured;
   const span = Math.max(1, endedAt - startedAt);
   const spans = heartRateRuns(heartRate ?? [], { from: startedAt, to: endedAt });
@@ -420,8 +437,41 @@ export function SnakeChart({
   const endX = plotRight;
   const hasHandOuts = steps.some((step) => step.handOut);
 
+  const cursorStep = scrubbed === undefined ? undefined : steps[scrubbed];
+  const cursor =
+    cursorStep === undefined
+      ? undefined
+      : { x: geometry.xOf(cursorStep.t), y: geometry.yOf(cursorStep.lead) };
+  const readout =
+    cursorStep === undefined
+      ? undefined
+      : scrubReadout(cursorStep, {
+          names,
+          startedAt,
+          openingSetGames: openingSetGames(steps),
+          squash: squash === true,
+          // The smoothed readings the drawn line uses, so the BPM cell matches the curve.
+          ...(hasHeartRate ? { heartRate: spans.flatMap((run) => run.points) } : {}),
+        });
+
+  const scrubTo = (x: number): void => {
+    const index = nearestStep(steps, geometry.xOf, x);
+    if (index === undefined || index === lastScrubbed.current) {
+      return;
+    }
+    lastScrubbed.current = index;
+    setScrubbed(index);
+    scoreHaptic();
+  };
+  const endScrub = (): void => {
+    lastScrubbed.current = undefined;
+    setScrubbed(undefined);
+  };
+  const scrubber = useScrubGesture({ scrubTo, endScrub });
+
   return (
     <View
+      position="relative"
       width={fixedWidth ?? "100%"}
       onLayout={(event) => {
         if (fixedWidth === undefined) {
@@ -448,6 +498,26 @@ export function SnakeChart({
             pointsA={pointsA}
             pointsB={pointsB}
           />
+          {cursor === undefined ? null : (
+            <G>
+              <Line
+                x1={cursor.x}
+                y1={PAD_TOP}
+                x2={cursor.x}
+                y2={PLOT_BOTTOM}
+                stroke={textAlpha(0.45)}
+                strokeWidth={1}
+              />
+              <Circle
+                cx={cursor.x}
+                cy={cursor.y}
+                r={CURSOR_DOT}
+                fill={colors.card}
+                stroke={colors.text}
+                strokeWidth={2}
+              />
+            </G>
+          )}
           <Text x={PAD_X} y={CHART_HEIGHT - 6} fontSize={9} fontWeight="700" fill={textAlpha(0.35)}>
             0:00
           </Text>
@@ -463,6 +533,17 @@ export function SnakeChart({
           </Text>
         </Svg>
       )}
+      {width > 0 && steps.length > 0 ? (
+        // A native View: Tamagui's View does not pass the responder handlers through on web.
+        <NativeView
+          accessible={true}
+          aria-label="Score race for this game"
+          accessibilityHint="Press and hold the line to see any moment"
+          style={{ position: "absolute", top: 0, left: 0, width, height: CHART_HEIGHT }}
+          {...scrubber.panHandlers}
+        />
+      ) : null}
+      <ScrubReadoutRow readout={readout} />
       <XStack alignItems="center" justifyContent="center" flexWrap="wrap" gap={14} marginTop={4}>
         <LegendDot color={colors.accent} label="TEAM A AHEAD" />
         <LegendDot color={colors.teamB} label="TEAM B AHEAD" />

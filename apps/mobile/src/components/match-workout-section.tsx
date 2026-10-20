@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { MatchActivityCard } from "@/components/match-activity-card.tsx";
 import { ScoreRaceCard } from "@/components/score-race-card.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
-import { ownerTeamOf } from "@/lib/format.ts";
+import { ownerTeamOf, teamNames } from "@/lib/format.ts";
 import type { GameSeries } from "@/lib/game-series.ts";
 import { resolveMaxHr } from "@/lib/insights.ts";
 
@@ -24,13 +24,14 @@ export function MatchWorkoutSection({
   const motion = useDbQuery((driver) => loadMatchMotion(driver, match.id));
   const owner = useDbQuery(getOwner);
   const maxHr = useDbQuery(resolveMaxHr);
-  const sport = match.config.sport;
+  const { sport } = match.config;
   return (
     <>
       <ScoreRaceCard
         series={series}
         sport={sport}
         matchStartedAt={match.startedAt}
+        names={teamNames(match)}
         {...(heartRate === undefined ? {} : { heartRate })}
         {...(motion === undefined ? {} : { motion })}
       />
