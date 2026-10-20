@@ -312,7 +312,9 @@ export default function LiveScreen(): ReactNode {
               HAND OUT
             </Display>
           </Pill>
-        ) : label === undefined ? null : (
+        ) : null}
+
+        {!handOut && label !== undefined ? (
           <Pill
             alignSelf="center"
             backgroundColor={colors.ink}
@@ -324,7 +326,7 @@ export default function LiveScreen(): ReactNode {
               {label}
             </Display>
           </Pill>
-        )}
+        ) : null}
 
         <LiveActionBar
           paused={paused}

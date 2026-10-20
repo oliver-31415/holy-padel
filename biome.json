@@ -281,6 +281,22 @@
           }
         }
       }
+    },
+    {
+      "includes": ["apps/mobile/scripts/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noExcessiveLinesPerFile": "off"
+          },
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          },
+          "correctness": {
+            "noNodejsModules": "off"
+          }
+        }
+      }
     }
   ]
 }

@@ -107,6 +107,7 @@ function StatsBody(): ReactNode {
     );
   }
 
+  const onlySport = sports.length === 1 ? sports[0] : undefined;
   return (
     <YStack gap={12}>
       {sports.length > 1 ? (
@@ -116,7 +117,7 @@ function StatsBody(): ReactNode {
         clutch={insights.clutch}
         comebacks={insights.comebacks}
         slips={insights.slips}
-        sport={sport === "all" ? (sports.length === 1 ? sports[0] : undefined) : sport}
+        sport={sport === "all" ? onlySport : sport}
       />
       <RalliesCard lengths={insights.rallies} />
       <PeopleCard partners={insights.partners} rivals={insights.rivals} />

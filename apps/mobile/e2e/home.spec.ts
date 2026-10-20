@@ -82,7 +82,7 @@ test.describe("home screen (design 3a)", () => {
     const gridBox = await page.getByTestId("history-grid").boundingBox();
     expect(gridBox?.width ?? 0).toBeGreaterThan(330);
 
-    const cells = page.getByRole("button", { name: /^\d+ match(es)? played, \d+ won$/u });
+    const cells = page.getByRole("button", { name: /^\d+ match(?:es)? played, \d+ won$/u });
     expect(await cells.count()).toBeGreaterThan(0);
     expect((await cells.first().boundingBox())?.width ?? 0).toBeGreaterThan(30);
 

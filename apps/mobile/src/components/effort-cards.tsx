@@ -26,7 +26,12 @@ function share(band: EffortBand | undefined): number {
   return band === undefined || band.of === 0 ? 0 : (band.won / band.of) * 100;
 }
 
-function effortVerdict(bands: readonly EffortBand[]): string {
+type Verdict =
+  | "You win more games when your heart rate stays lower"
+  | "You win more games when you're working hardest"
+  | "Your results hold up however hard you're working";
+
+function effortVerdict(bands: readonly EffortBand[]): Verdict {
   const gap = share(bands[0]) - share(bands.at(-1));
   if (gap >= EFFORT_GAP) {
     return "You win more games when your heart rate stays lower";
