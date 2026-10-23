@@ -105,7 +105,7 @@ export function ScoreRaceCard({
       <XStack alignItems="center" justifyContent="space-between">
         <Overline>SCORE RACE</Overline>
         <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.4)}>
-          {sport === "squash"
+          {sport === "squash" || sport === "pickleball"
             ? `GAME ${String(game.setNumber)} · ${String(game.pointsA)}–${String(game.pointsB)}`
             : `SET ${String(game.setNumber)} · GAME ${String(game.gameNumber)} · ${String(game.pointsA)}–${String(game.pointsB)}`}
         </Body>
@@ -155,6 +155,7 @@ export function ScoreRaceCard({
         pointsB={game.pointsB}
         names={names}
         squash={sport === "squash"}
+        pickleball={sport === "pickleball"}
         {...(heartRate === undefined ? {} : { heartRate })}
       />
 

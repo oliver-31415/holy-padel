@@ -399,6 +399,7 @@ export function SnakeChart({
   names,
   heartRate,
   squash,
+  pickleball,
   width: fixedWidth,
 }: {
   readonly steps: readonly GameSeriesStep[];
@@ -413,6 +414,8 @@ export function SnakeChart({
   readonly heartRate?: readonly HeartRateSample[];
   /** Squash has no sets, so the scrub readout labels its cells POINTS and GAMES. */
   readonly squash?: boolean;
+  /** Pickleball's scrub readout shows the server call (1–0–2) in its points cell. */
+  readonly pickleball?: boolean;
   readonly width?: number;
 }): ReactNode {
   const [measured, setMeasured] = useState(0);
@@ -450,6 +453,7 @@ export function SnakeChart({
           startedAt,
           openingSetGames: openingSetGames(steps),
           squash: squash === true,
+          pickleball: pickleball === true,
           // The smoothed readings the drawn line uses, so the BPM cell matches the curve.
           ...(hasHeartRate ? { heartRate: spans.flatMap((run) => run.points) } : {}),
         });
@@ -548,7 +552,11 @@ export function SnakeChart({
         <LegendDot color={colors.accent} label="TEAM A AHEAD" />
         <LegendDot color={colors.teamB} label="TEAM B AHEAD" />
         {hasHandOuts ? (
-          <LegendDot color={colors.text} label="HAND-OUT · NO POINT" square={true} />
+          <LegendDot
+            color={colors.text}
+            label={pickleball === true ? "SIDE-OUT · NO POINT" : "HAND-OUT · NO POINT"}
+            square={true}
+          />
         ) : null}
         {scale === undefined ? null : <LegendDot color={colors.danger} label="HEART RATE" />}
       </XStack>

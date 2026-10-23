@@ -198,3 +198,61 @@ describe("scrubReadout", () => {
     expect(readout).toMatchObject({ pointsLabel: "POINTS", gamesLabel: "GAMES", points: "3–2" });
   });
 });
+
+describe("scrubReadout for pickleball", () => {
+  const pickleball = { pickleball: true, openingSetGames: noSet, startedAt: 0, names };
+
+  it("reads the server call in the points cell, with en dashes", () => {
+    const readout = scrubReadout(
+      step(60_000, {
+        serving: "A",
+        points: { A: 1, B: 0 },
+        call: { team: "A", serverNumber: 2 },
+      }),
+      pickleball,
+    );
+    expect(readout).toEqual({
+      serving: "Nico",
+      pointsLabel: "POINTS",
+      points: "1–0–2",
+      gamesLabel: "GAMES",
+      elapsed: "1:00",
+    });
+  });
+
+  it("names a side-out SIDE-OUT and reads the receiving team's points second", () => {
+    const readout = scrubReadout(
+      step(60_000, {
+        handOut: true,
+        serving: "A",
+        points: { A: 1, B: 0 },
+        call: { team: "B", serverNumber: 1 },
+      }),
+      pickleball,
+    );
+    expect(readout).toMatchObject({
+      handOut: true,
+      sideOut: true,
+      serving: "Nico",
+      points: "0–1–1",
+    });
+  });
+
+  it("never shows a games cell, even when the set count moves", () => {
+    const readout = scrubReadout(
+      step(60_000, { points: { A: 11, B: 9 }, setGames: { A: 1, B: 0 } }),
+      pickleball,
+    );
+    expect(readout).not.toHaveProperty("games");
+    expect(readout).toMatchObject({ points: "11–9" });
+  });
+
+  it("leaves sideOut off a padel or squash hand-out", () => {
+    const readout = scrubReadout(step(0, { handOut: true, serving: "B" }), {
+      names,
+      startedAt: 0,
+      openingSetGames: noSet,
+    });
+    expect(readout).not.toHaveProperty("sideOut");
+  });
+});

@@ -26,6 +26,14 @@ function ReadoutStat({
   );
 }
 
+/** The serving cell's label: a hand-out is named by its sport's word, else the cell reads SERVING. */
+function handOutLabel(readout: ScrubReadout): string {
+  if (readout.sideOut === true) {
+    return "SIDE-OUT";
+  }
+  return readout.handOut === true ? "HAND-OUT" : "SERVING";
+}
+
 /**
  * Under the chart: the readout for the rally the cursor is on (server, points,
  * games in the set, heart rate, time into the game), or a hint on how to scrub.
@@ -49,10 +57,7 @@ export function ScrubReadoutRow({
     <XStack alignItems="center" height={44} testID="scrub-readout">
       {readout.serving === undefined ? null : (
         // A hand-out is named in the serving cell: the team that served lost the rally.
-        <ReadoutStat
-          label={readout.handOut === true ? "HAND-OUT" : "SERVING"}
-          value={readout.serving}
-        />
+        <ReadoutStat label={handOutLabel(readout)} value={readout.serving} />
       )}
       <ReadoutStat label={readout.pointsLabel} value={readout.points} />
       {readout.games === undefined ? null : (

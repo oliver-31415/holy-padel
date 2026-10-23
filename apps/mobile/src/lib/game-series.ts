@@ -7,6 +7,15 @@ import type {
 } from "@holy-padel/scoring";
 import { replayMatch } from "@holy-padel/scoring";
 
+/**
+ * A pickleball server call: the team read first (omitted at 0-0 before the
+ * first serve) and the server number (omitted in singles, which has none).
+ */
+export interface PickleballCall {
+  readonly team?: TeamId;
+  readonly serverNumber?: 1 | 2;
+}
+
 /** One point inside a game: when it was played and the lead after it. */
 export interface GameSeriesStep {
   readonly t: number;
@@ -15,9 +24,9 @@ export interface GameSeriesStep {
   /** The team that won the rally (a hand-out is won by the receiver). */
   readonly winner: TeamId;
   /**
-   * True when a squash HI-HO rally was won by the receiver: no point is
-   * scored and the serve passes. Marked on the score-race chart so serve
-   * stretches read as plateaus between markers. Padel and PAR never set it.
+   * True when the serve passed on the rally: a squash HI-HO rally won by the
+   * receiver, or any pickleball side-out. Marked on the score-race chart so
+   * serve stretches read as plateaus between markers. Padel and PAR never set it.
    */
   readonly handOut: boolean;
   /** The team serving the rally; omitted when the engine has no server for it. */
@@ -26,6 +35,12 @@ export interface GameSeriesStep {
   readonly points: TeamValues<number>;
   /** Games each team holds in the set once the rally is settled, for the scrub readout. */
   readonly setGames: TeamValues<number>;
+  /**
+   * Pickleball only, once the rally settles and its game is still open: the
+   * server call behind the readout's "1–0–2". Omitted for other sports and
+   * when the game or set just ended.
+   */
+  readonly call?: PickleballCall;
 }
 
 /** The point-by-point lead ("snake") of one completed game. */
@@ -47,14 +62,14 @@ interface OpenGame {
   readonly steps: readonly GameSeriesStep[];
 }
 
-/** The in-game score after a rally: the engine's squash game points when it gives them, else a count. */
+/** The in-game score after a rally: the engine's game points when it gives them, else a count. */
 function scoreAfterRally(
   current: OpenGame,
   winner: TeamId,
-  squashPoints: { readonly A: number; readonly B: number } | undefined,
+  enginePoints: TeamValues<number> | undefined,
 ): { readonly a: number; readonly b: number } {
-  if (squashPoints !== undefined) {
-    return { a: squashPoints.A, b: squashPoints.B };
+  if (enginePoints !== undefined) {
+    return { a: enginePoints.A, b: enginePoints.B };
   }
   return {
     a: current.a + (winner === "A" ? 1 : 0),
@@ -62,19 +77,44 @@ function scoreAfterRally(
   };
 }
 
-/** The engine's squash game points after a rally, unless a game or set just ended. */
-function squashPointsAfter(after: MatchSnapshot, settled: boolean): TeamValues<number> | undefined {
+/**
+ * The engine's in-game points after a rally. Squash and pickleball keep them
+ * in the engine (pickleball only scores on the serving team's rallies, so a
+ * count would be wrong). Once a game ends, pickleball's final points sit on the
+ * set it completed; other games fall back to a count.
+ */
+function enginePointsAfter(after: MatchSnapshot, settled: boolean): TeamValues<number> | undefined {
+  if (after.currentGame?.kind === "pickleball") {
+    return settled ? after.completedSets.at(-1)?.games : after.currentGame.points;
+  }
   return settled || after.currentGame?.kind !== "squash" ? undefined : after.currentGame.points;
 }
 
-/** A squash HI-HO rally won by the receiver: no point is scored and the serve passes. */
+/** The pickleball server call after a rally, while its game is still open. */
+function callAfter(after: MatchSnapshot, settled: boolean): PickleballCall | undefined {
+  const game = after.currentGame;
+  if (settled || game?.kind !== "pickleball") {
+    return;
+  }
+  return {
+    ...(after.servingTeam === undefined ? {} : { team: after.servingTeam }),
+    ...(game.serverNumber === undefined ? {} : { serverNumber: game.serverNumber }),
+  };
+}
+
+/**
+ * A rally that passes the serve: a squash HI-HO rally won by the receiver, or
+ * any pickleball rally the serving team loses (a side-out, including the first
+ * server's loss in doubles).
+ */
 function isHandOut(config: MatchConfig, servingTeam: TeamId | undefined, winner: TeamId): boolean {
-  return (
-    config.sport === "squash" &&
-    config.squashMode === "hiho" &&
-    servingTeam !== undefined &&
-    winner !== servingTeam
-  );
+  if (servingTeam === undefined) {
+    return false;
+  }
+  if (config.sport === "pickleball") {
+    return winner !== servingTeam;
+  }
+  return config.sport === "squash" && config.squashMode === "hiho" && winner !== servingTeam;
 }
 
 /** The set's games per team once a rally settles: a game-ending rally adds one to its winner. */
@@ -130,20 +170,18 @@ export function computeGameSeries(
     const gameFinished =
       after.totalGames.A !== previousTotalGames.A || after.totalGames.B !== previousTotalGames.B;
     const setFinished = after.completedSets.length > previousSetCount;
+    const settled = gameFinished || setFinished;
 
     if (open === undefined) {
       open = { setNumber: before.setNumber, a: 0, b: 0, steps: [] };
     }
     const current: OpenGame = open;
-    // Squash HI-HO awards no point to a receiver's rally, so the lead must
-    // come from the engine's game points rather than from counting winners.
-    // A game-ending rally always scores (only points end a game), and the
-    // snapshot after it already shows the next game, so count it directly.
-    const { a, b } = scoreAfterRally(
-      current,
-      event.winner,
-      squashPointsAfter(after, gameFinished || setFinished),
-    );
+    // Squash HI-HO awards no point to a receiver's rally, and pickleball only
+    // scores on the serving team's rallies, so the lead must come from the
+    // engine's game points rather than from counting winners. A squash
+    // game-ending rally always scores, so counting it directly is exact.
+    const { a, b } = scoreAfterRally(current, event.winner, enginePointsAfter(after, settled));
+    const call = callAfter(after, settled);
     // A game-ending rally adds to the set's games for its winner; the set's last
     // game counts too, so the readout shows the set's final games.
     const serving = before.servingTeam === undefined ? {} : { serving: before.servingTeam };
@@ -161,6 +199,7 @@ export function computeGameSeries(
           ...serving,
           points: { A: a, B: b },
           setGames: setGamesAfter(before.currentSetGames, event.winner, gameFinished),
+          ...(call === undefined ? {} : { call }),
         },
       ],
     };
@@ -169,7 +208,7 @@ export function computeGameSeries(
 
     // Close AFTER the rally lands on it: the final point of a game belongs
     // to that game, not to a phantom follow-up series.
-    if (open.steps.length > 0 && (gameFinished || setFinished)) {
+    if (open.steps.length > 0 && settled) {
       closeGame(open, games);
       open = undefined;
     }

@@ -152,3 +152,53 @@ describe("computeGameSeries", () => {
     expect(second?.steps.at(-1)?.setGames).toEqual({ A: 1, B: 1 });
   });
 });
+
+describe("computeGameSeries for pickleball", () => {
+  const doubles: MatchConfig = {
+    sport: "pickleball",
+    bestOf: 1,
+    deuceMode: "advantage",
+    thirdSet: "superTieBreak",
+    pbType: "doubles",
+    pbTarget: 11,
+    pbTiebreak: "winByTwo",
+    firstServe: "A",
+    firstServePending: false,
+    firstServeOriginallyUndecided: false,
+  };
+  const at = (winners: string): PointEvent[] =>
+    [...winners].map((winner, index) => ({ winner: winner === "A" ? "A" : "B", at: index * 1000 }));
+
+  it("scores only the serving team's rallies, and marks each side-out", () => {
+    const [game] = computeGameSeries(doubles, at("ABAB"));
+    // A (server 2) scores, B's hand-out is a side-out, A's loss hands serve to B's partner
+    // with the score unchanged, and B's rally then scores for B.
+    expect(game?.steps.map((step) => step.points)).toEqual([
+      { A: 1, B: 0 },
+      { A: 1, B: 0 },
+      { A: 1, B: 0 },
+      { A: 1, B: 1 },
+    ]);
+    expect(game?.steps.map((step) => step.handOut)).toEqual([false, true, true, false]);
+    expect(game?.steps.map((step) => step.serving)).toEqual(["A", "A", "B", "B"]);
+  });
+
+  it("carries the server call on each open-game rally, with the team read first", () => {
+    const [game] = computeGameSeries(doubles, at("ABAB"));
+    expect(game?.steps.map((step) => step.call)).toEqual([
+      { team: "A", serverNumber: 2 },
+      { team: "B", serverNumber: 1 },
+      { team: "B", serverNumber: 2 },
+      { team: "B", serverNumber: 2 },
+    ]);
+  });
+
+  it("drops the call on the game-ending rally and ends on the final game points", () => {
+    const [game] = computeGameSeries(doubles, at("A".repeat(11)));
+    const last = game?.steps.at(-1);
+    expect(last?.call).toBeUndefined();
+    expect(last?.points).toEqual({ A: 11, B: 0 });
+    expect(game?.pointsA).toBe(11);
+    expect(game?.pointsB).toBe(0);
+  });
+});
