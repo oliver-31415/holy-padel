@@ -218,3 +218,44 @@ describe("padel regression: super tie-break still starts at one set all", () => 
     expect(snapshot.currentGame).toMatchObject({ tieBreakKind: "superTieBreak" });
   });
 });
+
+describe("pickleball doubles server call", () => {
+  const Doubles: MatchConfig = {
+    sport: "pickleball",
+    bestOf: 3,
+    deuceMode: "advantage",
+    thirdSet: "superTieBreak",
+    pbType: "doubles",
+    pbTarget: 11,
+    pbTiebreak: "winByTwo",
+    firstServe: "A",
+  };
+
+  it("opens game 1 with team A serving as server 2, at 0-0", () => {
+    const state = fold(Doubles, []);
+    expect(state.servingTeam).toBe("A");
+    expect(state.currentGame).toMatchObject({
+      kind: "pickleball",
+      points: { A: 0, B: 0 },
+      serverNumber: 2,
+    });
+  });
+
+  it("walks server 2 to a side-out, then server 1 to server 2 in the same team", () => {
+    // A (server 2) wins: 1-0-2. B wins the next rally: A's server 2 loses, so B takes
+    // serve as server 1 with the score unchanged (0-1-1 read as B's points first).
+    const sideOut = fold(Doubles, rallies("AB"));
+    expect(sideOut.servingTeam).toBe("B");
+    expect(sideOut.currentGame).toMatchObject({ points: { A: 1, B: 0 }, serverNumber: 1 });
+
+    // A wins the rally: B's server 1 loses, so the serve passes to B's partner (server 2).
+    const partner = fold(Doubles, rallies("ABA"));
+    expect(partner.servingTeam).toBe("B");
+    expect(partner.currentGame).toMatchObject({ points: { A: 1, B: 0 }, serverNumber: 2 });
+
+    // B wins as server 2: the serving team scores.
+    const scored = fold(Doubles, rallies("ABAB"));
+    expect(scored.servingTeam).toBe("B");
+    expect(scored.currentGame).toMatchObject({ points: { A: 1, B: 1 }, serverNumber: 2 });
+  });
+});

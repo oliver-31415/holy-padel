@@ -199,10 +199,12 @@ export function pointDisplay(snapshot: MatchSnapshot, team: TeamId): string {
 /**
  * The match around the live point, without repeating it — the watches show
  * the point score big already. Padel: "SET 2" and "6-4 · 3-2" (set scores and
- * games in this set). Squash and pickleball: "GAME 2" and the games won,
- * "1-0" (nothing in game 1). The label only appears when the match has more
- * than one set or game; a super tie-break is always labelled, with just the
- * set scores beside it.
+ * games in this set). Squash: "GAME 2" and the games won, "1-0" (nothing in
+ * game 1). Pickleball: "GAME 2" and the finished games' points plus the game
+ * in play with its server call, "11-7 · 1-0-2" — the call is the part the score
+ * needs, so it is never dropped. The label only appears when the match has more
+ * than one set or game; a super tie-break is always labelled, with just the set
+ * scores beside it.
  */
 export function matchContext(snapshot: MatchSnapshot): {
   readonly label: string;
@@ -214,7 +216,13 @@ export function matchContext(snapshot: MatchSnapshot): {
     return { label: "SUPER TB", score: sets.join(" · ") };
   }
   const several = config.bestOf > 1;
-  if (config.sport === "squash" || config.sport === "pickleball") {
+  if (config.sport === "pickleball") {
+    return {
+      label: several ? `GAME ${String(snapshot.setNumber)}` : "",
+      score: liveScoreLine(snapshot),
+    };
+  }
+  if (config.sport === "squash") {
     const wonA = completedSets.filter((set) => set.winner === "A").length;
     return {
       label: several ? `GAME ${String(snapshot.setNumber)}` : "",

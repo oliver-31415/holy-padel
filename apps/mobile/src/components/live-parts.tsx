@@ -101,7 +101,7 @@ export function SetChips({
       const isSuperTieBreak = game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak";
       const score = isSuperTieBreak
         ? `${String(game.points.A)}–${String(game.points.B)}`
-        : currentSetScore(snapshot).replace("-", "–");
+        : currentSetScore(snapshot).replaceAll("-", "–");
       chips.push(
         <SetChip
           key={setLabel}

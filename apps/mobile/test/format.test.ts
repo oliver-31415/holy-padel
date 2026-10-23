@@ -129,3 +129,41 @@ describe("matchContext", () => {
     expect(matchContext(snapshot)).toEqual({ label: "", score: "1-0" });
   });
 });
+
+describe("pickleball score lines", () => {
+  const doubles: MatchConfig = {
+    sport: "pickleball",
+    bestOf: 3,
+    deuceMode: "advantage",
+    thirdSet: "superTieBreak",
+    pbType: "doubles",
+    pbTarget: 11,
+    pbTiebreak: "winByTwo",
+    firstServe: "A",
+  };
+  const points = (pattern: string): PointEvent[] =>
+    [...pattern].map((winner, index) => ({ winner: winner === "A" ? "A" : "B", at: index }));
+
+  it("opens at 0-0-2, team A serving as server 2", () => {
+    const snapshot = computeMatch(doubles, []);
+    expect(liveScoreLine(snapshot)).toBe("0-0-2");
+    expect(matchContext(snapshot)).toEqual({ label: "GAME 1", score: "0-0-2" });
+  });
+
+  it("shows the serving team's points first with its server call", () => {
+    const snapshot = computeMatch(doubles, points("AA"));
+    expect(liveScoreLine(snapshot)).toBe("2-0-2");
+  });
+
+  it("keeps the finished game's points ahead of the game in play", () => {
+    // A wins game 1 11-0; B takes the undecided serve of game 2 and wins a rally.
+    const events: PointEvent[] = [
+      ...points("A".repeat(11)),
+      { winner: "B", kind: "serve", at: 100 },
+      { winner: "B", at: 101 },
+    ];
+    const snapshot = computeMatch(doubles, events);
+    expect(matchContext(snapshot)).toEqual({ label: "GAME 2", score: "11-0 · 1-0-2" });
+    expect(matchContext(snapshot).score).toBe(liveScoreLine(snapshot));
+  });
+});
