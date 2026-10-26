@@ -1,12 +1,26 @@
 package com.holypadel.wear.ui
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import android.text.format.DateFormat
 import java.util.Date
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,10 +58,17 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import com.holypadel.wear.MatchState
 import com.holypadel.wear.Phase
+
+/** App lock timings: hold length, crown distance to unlock, crown idle reset, unlock window. */
+private const val HOLD_MS = 1_000
+private const val CROWN_UNLOCK_PX = 1_200f
+private const val CROWN_IDLE_MS = 1_500L
+private const val UNLOCK_WINDOW_MS = 10_000L
 
 /** Routes to the right screen purely from the mirrored [MatchState.phase]. */
 @Composable
@@ -62,21 +83,38 @@ fun WatchApp(
     onStop: () -> Unit,
     onCancel: () -> Unit,
     onEnd: () -> Unit,
+    lockEnabled: Boolean,
+    onLockChange: (Boolean) -> Unit,
 ) {
     Box(
         modifier = Modifier.fillMaxSize().background(CourtColors.Black),
         contentAlignment = Alignment.Center,
     ) {
         when (state.phase) {
-            Phase.IDLE -> IdleScreen(state, onStartLast)
-            Phase.LIVE -> LiveScoreScreen(state, liveBpm, onScore, onSetChoice, onUndo, onPause, onStop, onCancel)
+            Phase.IDLE -> IdleScreen(state, onStartLast, lockEnabled, onLockChange)
+            Phase.LIVE -> LiveScoreScreen(
+                state,
+                liveBpm,
+                onScore,
+                onSetChoice,
+                onUndo,
+                onPause,
+                onStop,
+                onCancel,
+                lockEnabled,
+            )
             Phase.WON -> MatchWonScreen(state, onEnd)
         }
     }
 }
 
 @Composable
-private fun IdleScreen(state: MatchState, onStartLast: () -> Unit) {
+private fun IdleScreen(
+    state: MatchState,
+    onStartLast: () -> Unit,
+    lockEnabled: Boolean,
+    onLockChange: (Boolean) -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -107,6 +145,13 @@ private fun IdleScreen(state: MatchState, onStartLast: () -> Unit) {
             }
         }
         Spacer(Modifier.height(10.dp))
+        PillButton(
+            label = if (lockEnabled) "APP LOCK: ON" else "APP LOCK: OFF",
+            background = if (lockEnabled) CourtColors.Accent else CourtColors.White.copy(alpha = 0.14f),
+            text = if (lockEnabled) CourtColors.Ink else CourtColors.White,
+            onClick = { onLockChange(!lockEnabled) },
+        )
+        Spacer(Modifier.height(10.dp))
         BodyText("or set up on phone", color = CourtColors.White40, sizeSp = 10)
     }
 }
@@ -127,15 +172,56 @@ private fun LiveScoreScreen(
     onPause: () -> Unit,
     onStop: () -> Unit,
     onCancel: () -> Unit,
+    lockEnabled: Boolean,
 ) {
     // Land on the score face (page 1) — the surface you touch every rally.
     val pagerState = rememberPagerState(initialPage = 1) { 2 }
-    Box(modifier = Modifier.fillMaxSize()) {
+    // App lock: while locked, back and swipe-to-dismiss are swallowed. A hold on the
+    // controls page or a crown turn unlocks for UNLOCK_WINDOW_MS, or until the score moves.
+    var unlocked by remember { mutableStateOf(false) }
+    val locked = lockEnabled && !unlocked
+    var crownProgress by remember { mutableFloatStateOf(0f) }
+    val focusRequester = remember { FocusRequester() }
+
+    BackHandler(enabled = locked) {}
+    LaunchedEffect(state.pointA, state.pointB, state.games, state.setLabel) { unlocked = false }
+    LaunchedEffect(unlocked) {
+        if (unlocked) {
+            delay(UNLOCK_WINDOW_MS)
+            unlocked = false
+        }
+    }
+    LaunchedEffect(crownProgress) {
+        if (crownProgress > 0f) {
+            delay(CROWN_IDLE_MS)
+            crownProgress = 0f
+        }
+    }
+    LaunchedEffect(locked) {
+        if (locked) focusRequester.requestFocus()
+    }
+
+    val crownModifier = if (locked) {
+        Modifier
+            .focusRequester(focusRequester)
+            .focusable()
+            .onRotaryScrollEvent { event ->
+                crownProgress += abs(event.verticalScrollPixels)
+                if (crownProgress >= CROWN_UNLOCK_PX) {
+                    unlocked = true
+                    crownProgress = 0f
+                }
+                true
+            }
+    } else {
+        Modifier
+    }
+    Box(modifier = Modifier.fillMaxSize().then(crownModifier)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             if (page == 0) {
-                ControlsPage(state, onUndo, onPause, onStop, onCancel)
+                ControlsPage(state, onUndo, onPause, onStop, onCancel, locked, onUnlock = { unlocked = true })
             } else {
-                ScorePage(state, liveBpm, onScore, onSetChoice)
+                ScorePage(state, liveBpm, onScore, onSetChoice, locked)
             }
         }
         PagerDots(
@@ -143,6 +229,22 @@ private fun LiveScoreScreen(
             current = pagerState.currentPage,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 3.dp),
         )
+        // Crown progress: a thin arc around the bezel that fills as you turn.
+        if (locked && crownProgress > 0f) {
+            Canvas(Modifier.fillMaxSize()) {
+                val stroke = 4.dp.toPx()
+                val inset = stroke / 2f
+                drawArc(
+                    CourtColors.Accent,
+                    startAngle = -90f,
+                    sweepAngle = 360f * (crownProgress / CROWN_UNLOCK_PX).coerceAtMost(1f),
+                    useCenter = false,
+                    topLeft = Offset(inset, inset),
+                    size = Size(size.width - stroke, size.height - stroke),
+                    style = Stroke(width = stroke, cap = StrokeCap.Round),
+                )
+            }
+        }
     }
 }
 
@@ -235,6 +337,7 @@ private fun ScorePage(
     liveBpm: Int,
     onScore: (String) -> Unit,
     onSetChoice: (String) -> Unit,
+    locked: Boolean,
 ) {
     val paused = state.paused
     Column(
@@ -302,7 +405,11 @@ private fun ScorePage(
         // Which set/game and the score around it — never the point score again,
         // and only "PAUSED" as a status (a live match needs no label).
         val context = listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  ")
-        val footer = if (paused) listOf("PAUSED", context).filter { it.isNotEmpty() }.joinToString("  ") else context
+        val tags = listOfNotNull(
+            if (paused) "PAUSED" else null,
+            if (locked) "LOCKED" else null,
+        )
+        val footer = (tags + context).filter { it.isNotEmpty() }.joinToString("  ")
         if (footer.isNotEmpty()) LabelText(footer)
     }
 }
@@ -355,6 +462,8 @@ private fun ControlsPage(
     onPause: () -> Unit,
     onStop: () -> Unit,
     onCancel: () -> Unit,
+    locked: Boolean,
+    onUnlock: () -> Unit,
 ) {
     val paused = state.paused
     var confirmingCancel by remember { mutableStateOf(false) }
@@ -363,11 +472,15 @@ private fun ControlsPage(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterVertically),
     ) {
-        LabelText(
-            if (paused) "PAUSED" else "CONTROLS",
-            color = if (paused) CourtColors.White45 else CourtColors.Accent,
-            sizeSp = 11,
-        )
+        if (locked) {
+            HoldToUnlock(onUnlock)
+        } else {
+            LabelText(
+                if (paused) "PAUSED" else "CONTROLS",
+                color = if (paused) CourtColors.White45 else CourtColors.Accent,
+                sizeSp = 11,
+            )
+        }
         Row(
             horizontalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
@@ -412,6 +525,56 @@ private fun ControlsPage(
                 LabelText("CANCEL MATCH", color = CourtColors.White.copy(alpha = 0.55f), sizeSp = 12)
             }
         }
+    }
+}
+
+/**
+ * App-lock release: press and hold for HOLD_MS. The ring fills while held and
+ * snaps back if the finger lifts early, so a stray tap never unlocks.
+ */
+@Composable
+private fun HoldToUnlock(onUnlock: () -> Unit) {
+    val progress = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    Row(
+        modifier = Modifier.pointerInput(Unit) {
+            detectTapGestures(
+                onPress = {
+                    val fill = scope.launch {
+                        progress.animateTo(1f, tween(HOLD_MS, easing = LinearEasing))
+                        onUnlock()
+                    }
+                    tryAwaitRelease()
+                    // Lifted before the ring filled: cancel the fill and wind it back down.
+                    if (fill.isActive) {
+                        fill.cancel()
+                        scope.launch { progress.animateTo(0f) }
+                    }
+                },
+            )
+        },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Canvas(Modifier.size(30.dp)) {
+            val stroke = 3.dp.toPx()
+            val inset = stroke / 2f
+            drawCircle(
+                color = CourtColors.White.copy(alpha = 0.18f),
+                radius = size.minDimension / 2f - inset,
+                style = Stroke(width = stroke),
+            )
+            drawArc(
+                CourtColors.Accent,
+                startAngle = -90f,
+                sweepAngle = 360f * progress.value,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = Size(size.width - stroke, size.height - stroke),
+                style = Stroke(width = stroke, cap = StrokeCap.Round),
+            )
+        }
+        LabelText("HOLD TO UNLOCK", color = CourtColors.Accent, sizeSp = 10)
     }
 }
 
