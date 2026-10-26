@@ -1,5 +1,7 @@
 export { computeMatch, replayMatch, undoLastPoint } from "./engine.ts";
 export { statusLabel, watchStatusLabel } from "./labels.ts";
+export type { OutcomeSnapshot } from "./outcome.ts";
+export { outcomeWinner } from "./outcome.ts";
 export {
   EXTENDED_SET_TARGET,
   GAME_TARGET,

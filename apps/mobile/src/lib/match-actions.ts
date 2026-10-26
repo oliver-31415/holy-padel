@@ -11,8 +11,8 @@ import {
   scorePoint,
 } from "@holy-padel/db";
 import type { MatchConfig, PointEvent, TeamId } from "@holy-padel/scoring";
-import { computeMatch } from "@holy-padel/scoring";
-import { currentLeader, finalScoreLine, liveScoreLine } from "@/lib/format.ts";
+import { computeMatch, outcomeWinner } from "@holy-padel/scoring";
+import { finalScoreLine, liveScoreLine } from "@/lib/format.ts";
 
 /**
  * The config for a rematch: the same scoring setup, except a match whose first
@@ -31,8 +31,8 @@ export function rematchConfig(config: MatchConfig): MatchConfig {
 /**
  * Stop AND save a match in whatever state it's in — the "court time's up, don't
  * lose the score" path. A truly finished match keeps the engine's winner and
- * final line; a match stopped mid-play is credited to whoever's ahead so the
- * partial result still counts.
+ * final line; a match stopped mid-play is credited to whoever's ahead (sets,
+ * then games, then points in the current game). A level stop is a draw.
  *
  * Shared by the phone's END sheet and the watch's stop intent so both surfaces
  * persist byte-identically — the phone stays the single writer either way.
@@ -45,7 +45,7 @@ export function stopAndSaveMatch(driver: SqlDriver, id: string, at: number): voi
   }
   const snapshot = computeMatch(match.config, loadEvents(driver, id));
   finishMatch(driver, id, {
-    winner: snapshot.winner ?? currentLeader(snapshot),
+    winner: outcomeWinner(snapshot),
     endedAt: at,
     scoreLine: snapshot.finished ? finalScoreLine(snapshot) : liveScoreLine(snapshot),
   });

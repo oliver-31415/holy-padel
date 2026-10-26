@@ -48,6 +48,7 @@ export {
   reopenMatch,
   resumeMatch,
   scorePoint,
+  setFinishedWinner,
   setMatchNote,
   setPendingGameSet,
   updateFirstServe,

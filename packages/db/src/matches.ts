@@ -285,11 +285,18 @@ export function removeLastEvent(driver: SqlDriver, matchId: string): void {
   });
 }
 
-/** Mark a live match as finished and cache its display score line. */
+/**
+ * Mark a live match as finished and cache its display score line. A `winner`
+ * of undefined records a draw: a match ended early while level.
+ */
 export function finishMatch(
   driver: SqlDriver,
   id: string,
-  outcome: { readonly winner: TeamId; readonly endedAt: number; readonly scoreLine: string },
+  outcome: {
+    readonly winner: TeamId | undefined;
+    readonly endedAt: number;
+    readonly scoreLine: string;
+  },
 ): void {
   // Close any open pause at the end time so the stored paused_ms is final.
   driver.execute(
@@ -298,8 +305,16 @@ export function finishMatch(
            paused_ms = paused_ms + CASE WHEN paused_at IS NULL THEN 0 ELSE ? - paused_at END,
            paused_at = NULL
      WHERE id = ?`,
-    [outcome.winner, outcome.endedAt, outcome.scoreLine, outcome.endedAt, id],
+    [outcome.winner ?? null, outcome.endedAt, outcome.scoreLine, outcome.endedAt, id],
   );
+}
+
+/** Correct the cached result of a finished match; undefined stores a draw. */
+export function setFinishedWinner(driver: SqlDriver, id: string, winner: TeamId | undefined): void {
+  driver.execute("UPDATE matches SET winner = ? WHERE id = ? AND status = 'finished'", [
+    winner ?? null,
+    id,
+  ]);
 }
 
 /**
