@@ -2,6 +2,7 @@ package com.holypadel.wear
 
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -14,6 +15,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import androidx.wear.ongoing.OngoingActivity
+import androidx.wear.ongoing.Status
 
 /**
  * The process-level owner of a live match's Health Services exercise.
@@ -79,14 +82,33 @@ class ExerciseService : Service() {
         NotificationManagerCompat.from(this).createNotificationChannel(channel)
     }
 
-    private fun buildNotification(): Notification =
-        NotificationCompat.Builder(this, CHANNEL_ID)
+    private fun buildNotification(): Notification {
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(R.string.exercise_notification_text))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+        // Surfaces the live match on the watch face (ongoing chip). Tapping it reopens
+        // the app; the service stays a health foreground service either way.
+        val touchIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        OngoingActivity.Builder(this, NOTIFICATION_ID, builder)
+            .setStaticIcon(R.mipmap.ic_launcher)
+            .setTouchIntent(touchIntent)
+            .setTitle(getString(R.string.app_name))
+            .setStatus(
+                Status.Builder().addTemplate(getString(R.string.ongoing_status)).build(),
+            )
             .build()
+            .apply(this)
+        return builder.build()
+    }
 
     companion object {
         const val EXTRA_STARTED_AT = "startedAt"

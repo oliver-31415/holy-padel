@@ -77,4 +77,8 @@ dependencies {
     // against the 1.6.2 / 1.4.2 release AARs; both need compileSdk >= 35.
     implementation("androidx.wear.tiles:tiles:1.6.2")
     implementation("androidx.wear.protolayout:protolayout:1.4.2")
+
+    // Wear ongoing activity — the live match shows on the watch face and in the ongoing
+    // slot. Signatures checked against the 1.1.0 release AAR; core-ktx stays pinned above.
+    implementation("androidx.wear:wear-ongoing:1.1.0")
 }
