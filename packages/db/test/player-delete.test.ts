@@ -47,7 +47,7 @@ describe("player deletion", () => {
     const stats = computeProfileStats(driver, "nico");
     expect(stats.played).toBe(1);
     expect(stats.partners).toEqual([
-      { playerId: REMOVED_PLAYER_ID, name: "Former player", won: 1, lost: 0 },
+      { playerId: REMOVED_PLAYER_ID, name: "Former player", won: 1, lost: 0, drew: 0 },
     ]);
   });
 

@@ -1,3 +1,4 @@
+import type { Outcome } from "@holy-padel/db";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Pressable } from "react-native";
@@ -131,6 +132,14 @@ function changeLabel(values: readonly number[], metric: Metric): string | undefi
 
 const CHART_HEIGHT = 74;
 
+/** Won is the highlight, a level early stop a neutral mid-tone, a loss the faintest. */
+function barColor(outcome: Outcome): string {
+  if (outcome === "won") {
+    return colors.accent;
+  }
+  return outcome === "drew" ? textAlpha(0.3) : textAlpha(0.18);
+}
+
 function TrendBars({
   points,
   metric,
@@ -156,7 +165,7 @@ function TrendBars({
               maxWidth={26}
               height={height}
               borderRadius={5}
-              backgroundColor={point.won ? colors.accent : textAlpha(0.18)}
+              backgroundColor={barColor(point.outcome)}
             />
           </XStack>
         );
@@ -165,7 +174,7 @@ function TrendBars({
   );
 }
 
-/** The last few watch-tracked matches, one bar each — wins in the highlight colour. */
+/** The last few watch-tracked matches, one bar each — wins in the highlight colour, draws neutral. */
 export function TrendCard({ points }: { readonly points: readonly TrendPoint[] }): ReactNode {
   const available = METRICS.filter((option) =>
     points.some((point) => metricOf(point, option.value) !== undefined),
@@ -243,6 +252,12 @@ export function TrendCard({ points }: { readonly points: readonly TrendPoint[] }
           <View width={8} height={8} borderRadius={2} backgroundColor={textAlpha(0.18)} />
           <Body fontSize={9.5} fontWeight="800" letterSpacing={1.1} color={textAlpha(0.45)}>
             LOST
+          </Body>
+        </XStack>
+        <XStack alignItems="center" gap={5}>
+          <View width={8} height={8} borderRadius={2} backgroundColor={textAlpha(0.3)} />
+          <Body fontSize={9.5} fontWeight="800" letterSpacing={1.1} color={textAlpha(0.45)}>
+            DREW
           </Body>
         </XStack>
       </XStack>

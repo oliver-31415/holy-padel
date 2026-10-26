@@ -20,6 +20,7 @@ import {
   fullDayLabel,
   pairInitials,
   playedMs,
+  resultLabel,
   teamNames,
   timeLabel,
 } from "@/lib/format.ts";
@@ -178,6 +179,22 @@ function DeleteConfirm({
   );
 }
 
+/** A level stop reads in neutral tones rather than the winner's accent. */
+function resultTones(drew: boolean): {
+  readonly score: string;
+  readonly name: string;
+  readonly bar: string;
+} {
+  return drew
+    ? { score: whiteAlpha(0.7), name: textAlpha(0.6), bar: textAlpha(0.3) }
+    : { score: colors.accent, name: colors.accentOnCard, bar: colors.accent };
+}
+
+/** A level stop credits the service games to the anchor side, so name that side. */
+function serviceHeading(drew: boolean, name: string): string {
+  return drew ? `${name} service games held` : "Service games held";
+}
+
 export default function MatchOverviewScreen(): ReactNode {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -201,9 +218,12 @@ export default function MatchOverviewScreen(): ReactNode {
   const stats = computeStats(match.config, events);
   const series = computeGameSeries(match.config, events);
   const names = teamNames(match);
-  const winner: TeamId = match.winner ?? snapshot.winner ?? "A";
+  // A level early stop has no winner: "A" only anchors the team-keyed stats below.
+  const drew = match.winner === undefined;
+  const winner: TeamId = match.winner ?? "A";
   const loser: TeamId = winner === "A" ? "B" : "A";
   const initials = { A: pairInitials(match.names.A), B: pairInitials(match.names.B) };
+  const tones = resultTones(drew);
 
   const pointsWinner = snapshot.totalPoints[winner];
   const pointsLoser = snapshot.totalPoints[loser];
@@ -222,7 +242,7 @@ export default function MatchOverviewScreen(): ReactNode {
 
   const exportMatch = (): void => {
     void Share.share({
-      message: `${names[winner]} def. ${names[loser]} ${match.scoreLine ?? ""} · ${durationLabel(stats.durationMs)}`,
+      message: `${names[winner]} ${drew ? "drew with" : "def."} ${names[loser]} ${match.scoreLine ?? ""} · ${durationLabel(stats.durationMs)}`,
     });
   };
 
@@ -297,9 +317,9 @@ export default function MatchOverviewScreen(): ReactNode {
             color={whiteAlpha(0.4)}
             marginTop={4}
           >
-            {`DEF. ${names[loser].toUpperCase()}`}
+            {resultLabel(names[loser], drew)}
           </Body>
-          <Display fontSize={58} color={colors.accent} marginTop={12} testID="overview-score">
+          <Display fontSize={58} color={tones.score} marginTop={12} testID="overview-score">
             {match.scoreLine ?? ""}
           </Display>
           <Body
@@ -372,7 +392,7 @@ export default function MatchOverviewScreen(): ReactNode {
             <XStack alignItems="center" justifyContent="space-between">
               <YStack alignItems="center" gap={1} maxWidth="32%">
                 <Display fontSize={16}>{String(pointsWinner)}</Display>
-                <Body fontSize={9} fontWeight="800" color={colors.accentOnCard} textAlign="center">
+                <Body fontSize={9} fontWeight="800" color={tones.name} textAlign="center">
                   {names[winner].toUpperCase()}
                 </Body>
               </YStack>
@@ -389,7 +409,7 @@ export default function MatchOverviewScreen(): ReactNode {
               </YStack>
             </XStack>
             <XStack height={8} borderRadius={999} overflow="hidden" gap={2}>
-              <View flex={winnerShare} backgroundColor={colors.accent} />
+              <View flex={winnerShare} backgroundColor={tones.bar} />
               <View flex={100 - winnerShare} backgroundColor={colors.greige} />
             </XStack>
           </YStack>
@@ -420,7 +440,7 @@ export default function MatchOverviewScreen(): ReactNode {
           ) : (
             <XStack alignItems="center" justifyContent="space-between">
               <Body fontSize={13} fontWeight="700">
-                Service games held
+                {serviceHeading(drew, names[winner])}
               </Body>
               <Display
                 fontSize={15}

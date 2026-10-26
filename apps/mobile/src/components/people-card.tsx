@@ -15,8 +15,13 @@ const COLLAPSED = 3;
 /** Fewer matches than this and a win rate says nothing. */
 const MIN_FOR_STANDOUT = 3;
 
+/** Every match with this person, draws included. */
+function playedWith(record: PersonRecord): number {
+  return record.won + record.lost + record.drew;
+}
+
 function winShare(record: PersonRecord): number {
-  return record.won / Math.max(1, record.won + record.lost);
+  return record.won / Math.max(1, playedWith(record));
 }
 
 /** The record with the best (or worst) win rate among people played often enough. */
@@ -24,7 +29,7 @@ function standout(
   records: readonly PersonRecord[],
   pick: "best" | "worst",
 ): PersonRecord | undefined {
-  const eligible = records.filter((record) => record.won + record.lost >= MIN_FOR_STANDOUT);
+  const eligible = records.filter((record) => playedWith(record) >= MIN_FOR_STANDOUT);
   const sorted = [...eligible].sort((left, right) =>
     pick === "best" ? winShare(right) - winShare(left) : winShare(left) - winShare(right),
   );
@@ -53,7 +58,7 @@ function PersonRow({
         <Body flex={1} fontSize={14.5} fontWeight="700" textAlign="left" numberOfLines={1}>
           {record.name}
         </Body>
-        <RecordBar won={record.won} lost={record.lost} />
+        <RecordBar won={record.won} lost={record.lost} drew={record.drew} />
         <Display fontSize={15} width={40} textAlign="right">
           {`${String(record.won)}–${String(record.lost)}`}
         </Display>
@@ -79,7 +84,7 @@ function Highlight({
         {record.name}
       </Body>
       <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
-        {`${String(Math.round(winShare(record) * 100))}% won · ${String(record.won + record.lost)} played`}
+        {`${String(Math.round(winShare(record) * 100))}% won · ${String(playedWith(record))} played`}
       </Body>
     </YStack>
   );

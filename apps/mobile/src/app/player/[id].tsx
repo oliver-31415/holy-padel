@@ -9,7 +9,7 @@ import { RecordBar } from "@/components/record-bar.tsx";
 import { StatTile } from "@/components/stat-tile.tsx";
 import { Avatar, Body, Card, Display, Overline, Pill, ResultBadge } from "@/components/ui.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
-import { fullDayLabel } from "@/lib/format.ts";
+import { fullDayLabel, recordLabel } from "@/lib/format.ts";
 import { goBack } from "@/lib/navigation.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
 
@@ -29,8 +29,8 @@ export default function PlayerScreen(): ReactNode {
 
   const sideLabel = player.side === undefined ? "" : ` · plays ${player.side} side`;
   const subtitle = `${player.club ?? ""}${sideLabel}`;
-  const togetherTotal = stats.withOwner.won + stats.withOwner.lost;
-  const againstTotal = stats.againstOwner.won + stats.againstOwner.lost;
+  const togetherTotal = stats.withOwner.won + stats.withOwner.lost + stats.withOwner.drew;
+  const againstTotal = stats.againstOwner.won + stats.againstOwner.lost + stats.againstOwner.drew;
 
   return (
     <ScrollView
@@ -89,11 +89,7 @@ export default function PlayerScreen(): ReactNode {
 
       <XStack gap={8}>
         <StatTile value={String(stats.played)} label="PLAYED" variant="ink" />
-        <StatTile
-          value={`${String(stats.record.won)}–${String(stats.record.lost)}`}
-          label="RECORD"
-          variant="accent"
-        />
+        <StatTile value={recordLabel(stats.record)} label="RECORD" variant="accent" />
         <StatTile value={`${String(stats.winRatePercent)}%`} label="WIN RATE" variant="white" />
       </XStack>
 
@@ -107,9 +103,14 @@ export default function PlayerScreen(): ReactNode {
         >
           <Overline>FORM · LAST 5</Overline>
           <XStack gap={6}>
-            {stats.form.map((won, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: the strip is positional by design
-              <ResultBadge key={index} won={won} size={25} />
+            {stats.form.map((outcome, index) => (
+              <ResultBadge
+                // biome-ignore lint/suspicious/noArrayIndexKey: the strip is positional by design
+                key={index}
+                won={outcome === "won"}
+                drew={outcome === "drew"}
+                size={25}
+              />
             ))}
           </XStack>
         </Card>
@@ -126,9 +127,13 @@ export default function PlayerScreen(): ReactNode {
             <Body flex={1} fontSize={14} fontWeight="700" color={textAlpha(0.6)}>
               {`${String(togetherTotal)} played together`}
             </Body>
-            <RecordBar won={stats.withOwner.won} lost={stats.withOwner.lost} />
-            <Display fontSize={15} width={36} textAlign="right">
-              {`${String(stats.withOwner.won)}–${String(stats.withOwner.lost)}`}
+            <RecordBar
+              won={stats.withOwner.won}
+              lost={stats.withOwner.lost}
+              drew={stats.withOwner.drew}
+            />
+            <Display fontSize={15} width={52} textAlign="right">
+              {recordLabel(stats.withOwner)}
             </Display>
           </XStack>
         )}
@@ -137,9 +142,7 @@ export default function PlayerScreen(): ReactNode {
             <Body fontSize={14.5} fontWeight="700">
               vs you
             </Body>
-            <Display fontSize={15}>
-              {`${String(stats.againstOwner.won)}–${String(stats.againstOwner.lost)}`}
-            </Display>
+            <Display fontSize={15}>{recordLabel(stats.againstOwner)}</Display>
           </XStack>
         )}
       </Card>
@@ -167,7 +170,11 @@ export default function PlayerScreen(): ReactNode {
                 </Body>
               </YStack>
               <XStack alignItems="center" gap={10}>
-                <ResultBadge won={match.won} size={25} />
+                <ResultBadge
+                  won={match.outcome === "won"}
+                  drew={match.outcome === "drew"}
+                  size={25}
+                />
                 <ChevronRight size={13} color={textAlpha(0.3)} />
               </XStack>
             </XStack>

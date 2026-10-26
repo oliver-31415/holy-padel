@@ -292,14 +292,14 @@ export default function HomeScreen(): ReactNode {
       >
         <Overline>FORM</Overline>
         <XStack gap={6}>
-          {stats.form.map((won, index) => (
+          {stats.form.map((outcome, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: the strip is positional by design
-            <ResultBadge key={index} won={won} size={24} />
+            <ResultBadge key={index} won={outcome === "won"} drew={outcome === "drew"} size={24} />
           ))}
         </XStack>
         <Display
           fontSize={16}
-        >{`${String(stats.record.won)}–${String(stats.record.lost)}`}</Display>
+        >{`${String(stats.record.won)}–${String(stats.record.lost)}${stats.record.drew === 0 ? "" : `–${String(stats.record.drew)}`}`}</Display>
       </Card>
 
       <HistoryGrid
@@ -307,6 +307,7 @@ export default function HomeScreen(): ReactNode {
         played={history.played}
         won={history.won}
         lost={history.lost}
+        drew={history.drew}
         matches={allMatches}
         ownerId={ownerId}
         streak={stats.streak}

@@ -91,7 +91,13 @@ function DaySquare({
   // fill alone.
   const ringed = selected || cell.today;
   const played = cell.played > 0;
-  const fill = played ? winShareColor(cell.won, cell.lost) : textAlpha(0.05);
+  // A day of only level early stops has no win share, so it stays neutral.
+  const onlyDraws = cell.won + cell.lost === 0 && cell.drew > 0;
+  const fill = onlyDraws
+    ? textAlpha(0.3)
+    : played
+      ? winShareColor(cell.won, cell.lost)
+      : textAlpha(0.05);
   const inner = <View width="100%" height="100%" borderRadius={RADIUS} backgroundColor={fill} />;
 
   if (!played) {
@@ -120,7 +126,7 @@ function DaySquare({
       justifyContent="center"
       pressStyle={{ opacity: 0.65 }}
       role="button"
-      aria-label={`${cell.played} ${cell.played === 1 ? "match" : "matches"} played, ${cell.won} won`}
+      aria-label={`${cell.played} ${cell.played === 1 ? "match" : "matches"} played, ${cell.won} won${cell.drew > 0 ? `, ${String(cell.drew)} drew` : ""}`}
       onPress={() => {
         onPress(cell.day);
       }}
@@ -147,11 +153,16 @@ function DayMatches({
   );
   const ownerWon = (match: MatchSummary): boolean => match.winner === ownerTeamOf(match, ownerId);
   const won = dayMatches.filter(ownerWon).length;
-  const lost = dayMatches.length - won;
+  const drew = dayMatches.filter((match) => match.winner === undefined).length;
+  const lost = dayMatches.length - won - drew;
+  const record =
+    drew === 0
+      ? `${String(won)}–${String(lost)}`
+      : `${String(won)}–${String(lost)}–${String(drew)}`;
   return (
     <YStack gap={11}>
       <XStack alignItems="center" justifyContent="space-between">
-        <Display fontSize={15}>{`${fullDayLabel(day)} · ${String(won)}–${String(lost)}`}</Display>
+        <Display fontSize={15}>{`${fullDayLabel(day)} · ${record}`}</Display>
         <Body
           fontSize={11}
           fontWeight="800"
@@ -184,7 +195,11 @@ function DayMatches({
               <Display fontSize={15} color={textAlpha(0.6)}>
                 {match.scoreLine ?? ""}
               </Display>
-              <ResultBadge won={match.winner === ownerTeam} size={26} />
+              <ResultBadge
+                won={match.winner === ownerTeam}
+                drew={match.winner === undefined}
+                size={26}
+              />
             </XStack>
           </XStack>
         );
@@ -198,6 +213,7 @@ export function HistoryGrid({
   played,
   won,
   lost,
+  drew,
   matches,
   ownerId,
   streak,
@@ -208,6 +224,7 @@ export function HistoryGrid({
   readonly played: number;
   readonly won: number;
   readonly lost: number;
+  readonly drew: number;
   readonly matches: readonly MatchSummary[];
   readonly ownerId: string;
   readonly streak: { readonly kind: "won" | "lost"; readonly count: number } | undefined;
@@ -226,7 +243,11 @@ export function HistoryGrid({
       <XStack alignItems="center" justifyContent="space-between">
         <YStack>
           <Overline>LAST 6 WEEKS</Overline>
-          <Display fontSize={17}>{`${String(won)}W · ${String(lost)}L`}</Display>
+          <Display fontSize={17}>
+            {drew === 0
+              ? `${String(won)}W · ${String(lost)}L`
+              : `${String(won)}W · ${String(lost)}L · ${String(drew)}D`}
+          </Display>
         </YStack>
         {streak === undefined ? null : (
           <XStack

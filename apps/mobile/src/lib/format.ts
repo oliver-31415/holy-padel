@@ -80,6 +80,21 @@ export function fullDayLabel(timestamp: number): string {
   return `${weekday} ${month} ${String(date.getDate())}`;
 }
 
+/** "3–2" for a record, "3–2–1" once there are level early stops to show. */
+export function recordLabel(record: {
+  readonly won: number;
+  readonly lost: number;
+  readonly drew: number;
+}): string {
+  const base = `${String(record.won)}–${String(record.lost)}`;
+  return record.drew === 0 ? base : `${base}–${String(record.drew)}`;
+}
+
+/** The hero's line under the headline team: "DEF. CAMERON", or "DREW WITH CAMERON" for a level early stop. */
+export function resultLabel(opponent: string, drew: boolean): string {
+  return `${drew ? "DREW WITH" : "DEF."} ${opponent.toUpperCase()}`;
+}
+
 /** "18:32" */
 export function timeLabel(timestamp: number): string {
   const date = new Date(timestamp);
@@ -164,27 +179,6 @@ export function finalScoreLine(snapshot: MatchSnapshot): string {
     // For pickleball, just return the sets as usual
   }
   return parts.join(" · ");
-}
-
-/**
- * Who is ahead right now — for stopping a match mid-play ("court time's up")
- * and still crediting a result: most sets, then games in the set in play, then
- * total points. Ties fall to A (vanishingly rare, and never for a real finish
- * where the engine already set the winner).
- */
-export function currentLeader(snapshot: MatchSnapshot): TeamId {
-  const setsA = snapshot.completedSets.filter((set) => set.winner === "A").length;
-  const setsB = snapshot.completedSets.length - setsA;
-  if (setsA !== setsB) {
-    return setsA > setsB ? "A" : "B";
-  }
-  if (snapshot.currentSetGames.A !== snapshot.currentSetGames.B) {
-    return snapshot.currentSetGames.A > snapshot.currentSetGames.B ? "A" : "B";
-  }
-  if (snapshot.totalPoints.A !== snapshot.totalPoints.B) {
-    return snapshot.totalPoints.A > snapshot.totalPoints.B ? "A" : "B";
-  }
-  return "A";
 }
 
 /** The point call for a team — "0/15/30/40/AD" in a game, the number in a tie-break. */

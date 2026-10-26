@@ -1,10 +1,17 @@
-import type { HeartRateSample, MatchSummary, MotionSample, SqlDriver } from "@holy-padel/db";
+import type {
+  HeartRateSample,
+  MatchSummary,
+  MotionSample,
+  Outcome,
+  SqlDriver,
+} from "@holy-padel/db";
 import {
   getSetting,
   listMatches,
   loadEvents,
   loadMatchHeartRate,
   loadMatchMotion,
+  outcomeFor,
 } from "@holy-padel/db";
 import type { PointEvent, TeamId } from "@holy-padel/scoring";
 import type { Clutch } from "@/lib/clutch.ts";
@@ -27,10 +34,10 @@ export interface InsightMatch {
   readonly motion: readonly MotionSample[] | undefined;
 }
 
-/** Every finished match, newest first, with its ledger and watch data. */
+/** Every finished match (level early stops included), newest first, with its ledger and watch data. */
 export function loadInsightData(driver: SqlDriver): InsightMatch[] {
   return listMatches(driver)
-    .filter((match) => match.status === "finished" && match.winner !== undefined)
+    .filter((match) => match.status === "finished")
     .map((match) => ({
       match,
       events: loadEvents(driver, match.id),
@@ -55,13 +62,14 @@ export interface PersonRecord {
   readonly name: string;
   readonly won: number;
   readonly lost: number;
+  readonly drew: number;
 }
 
 /** One tracked match on the trend chart. */
 export interface TrendPoint {
   readonly matchId: string;
   readonly startedAt: number;
-  readonly won: boolean;
+  readonly outcome: Outcome;
   readonly avgBpm?: number;
   readonly steps?: number;
   readonly meters?: number;
@@ -88,28 +96,33 @@ export interface Insights {
 
 export const TREND_LENGTH = 8;
 
+type Tally = { name: string; won: number; lost: number; drew: number };
+
 function bump(
-  records: Map<string, { name: string; won: number; lost: number }>,
+  records: Map<string, Tally>,
   id: string | undefined,
   name: string | undefined,
-  won: boolean,
+  outcome: Outcome,
 ): void {
   if (id === undefined || name === undefined) {
     return;
   }
-  const entry = records.get(id) ?? { name, won: 0, lost: 0 };
-  if (won) {
+  const entry = records.get(id) ?? { name, won: 0, lost: 0, drew: 0 };
+  if (outcome === "won") {
     entry.won += 1;
-  } else {
+  } else if (outcome === "lost") {
     entry.lost += 1;
+  } else {
+    entry.drew += 1;
   }
   records.set(id, entry);
 }
 
-function ranked(records: Map<string, { name: string; won: number; lost: number }>): PersonRecord[] {
+function ranked(records: Map<string, Tally>): PersonRecord[] {
+  const played = (entry: Tally): number => entry.won + entry.lost + entry.drew;
   return [...records.entries()]
     .map(([playerId, entry]) => ({ playerId, ...entry }))
-    .sort((left, right) => right.won + right.lost - (left.won + left.lost) || right.won - left.won);
+    .sort((left, right) => played(right) - played(left) || right.won - left.won);
 }
 
 function ownerTeam(match: MatchSummary, ownerId: string): TeamId {
@@ -121,22 +134,22 @@ function peopleRecords(
   data: readonly InsightMatch[],
   ownerId: string,
 ): { partners: PersonRecord[]; rivals: PersonRecord[] } {
-  const partners = new Map<string, { name: string; won: number; lost: number }>();
-  const rivals = new Map<string, { name: string; won: number; lost: number }>();
+  const partners = new Map<string, Tally>();
+  const rivals = new Map<string, Tally>();
   for (const { match } of data) {
     const team = ownerTeam(match, ownerId);
     const other: TeamId = team === "A" ? "B" : "A";
-    const won = match.winner === team;
+    const outcome = outcomeFor(match.winner, team);
     match.players[team].forEach((id, index) => {
       if (id !== ownerId) {
-        bump(partners, id, match.names[team][index], won);
+        bump(partners, id, match.names[team][index], outcome);
       }
     });
     const seen = new Set<string>();
     match.players[other].forEach((id, index) => {
       if (id !== undefined && !seen.has(id)) {
         seen.add(id);
-        bump(rivals, id, match.names[other][index], won);
+        bump(rivals, id, match.names[other][index], outcome);
       }
     });
   }
@@ -164,7 +177,8 @@ function trackedActivity(data: readonly InsightMatch[], ownerId: string, maxHr: 
     series.forEach((game, index) => {
       const window = windows[index];
       const avgBpm = window === undefined ? undefined : activityIn(window, heartRate, []).avgBpm;
-      if (avgBpm !== undefined) {
+      // A level game (only an early stop can end one) is neither a win nor a loss.
+      if (avgBpm !== undefined && game.pointsA !== game.pointsB) {
         const won = team === "A" ? game.pointsA > game.pointsB : game.pointsB > game.pointsA;
         games.push({ avgBpm, won });
       }
@@ -177,7 +191,7 @@ function trackedActivity(data: readonly InsightMatch[], ownerId: string, maxHr: 
     trend.push({
       matchId: match.id,
       startedAt: match.startedAt,
-      won: match.winner === team,
+      outcome: outcomeFor(match.winner, team),
       ...(total.avgBpm === undefined ? {} : { avgBpm: total.avgBpm }),
       ...(total.steps === undefined ? {} : { steps: total.steps }),
       ...(total.meters === undefined ? {} : { meters: total.meters }),

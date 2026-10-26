@@ -15,6 +15,8 @@ export interface DayCell {
   readonly played: number;
   readonly won: number;
   readonly lost: number;
+  /** Level early stops — played, but neither a win nor a loss. */
+  readonly drew: number;
 }
 
 export interface History {
@@ -23,6 +25,7 @@ export interface History {
   readonly played: number;
   readonly won: number;
   readonly lost: number;
+  readonly drew: number;
 }
 
 const DAYS_PER_WEEK = 7;
@@ -46,14 +49,16 @@ export function computeHistory(
   now: number,
   weeks = 6,
 ): History {
-  const byDay = new Map<number, { played: number; won: number; lost: number }>();
+  const byDay = new Map<number, { played: number; won: number; lost: number; drew: number }>();
   const playedByOwner = matches.filter((match) => ownerTeamIn(match, ownerId) !== undefined);
   for (const match of playedByOwner) {
     const ownerTeam = ownerTeamIn(match, ownerId) ?? "A";
     const day = midnightOf(match.startedAt);
-    const entry = byDay.get(day) ?? { played: 0, won: 0, lost: 0 };
+    const entry = byDay.get(day) ?? { played: 0, won: 0, lost: 0, drew: 0 };
     entry.played += 1;
-    if (match.winner === ownerTeam) {
+    if (match.winner === undefined) {
+      entry.drew += 1;
+    } else if (match.winner === ownerTeam) {
       entry.won += 1;
     } else {
       entry.lost += 1;
@@ -70,6 +75,7 @@ export function computeHistory(
   let played = 0;
   let won = 0;
   let lost = 0;
+  let drew = 0;
   for (let day = gridStart; day <= endOfWeek; day += MS_PER_DAY) {
     const entry = day > today ? undefined : byDay.get(day);
     const cell: DayCell = {
@@ -79,10 +85,12 @@ export function computeHistory(
       played: entry?.played ?? 0,
       won: entry?.won ?? 0,
       lost: entry?.lost ?? 0,
+      drew: entry?.drew ?? 0,
     };
     played += cell.played;
     won += cell.won;
     lost += cell.lost;
+    drew += cell.drew;
     cells.push(cell);
   }
 
@@ -91,12 +99,12 @@ export function computeHistory(
     weeksColumns.push(cells.slice(start, start + DAYS_PER_WEEK));
   }
 
-  return { weeks: weeksColumns, played, won, lost };
+  return { weeks: weeksColumns, played, won, lost, drew };
 }
 
-/** The owner's team in a match, or undefined when they didn't play. */
+/** The owner's team in a finished match, or undefined when they didn't play. */
 function ownerTeamIn(match: MatchSummary, ownerId: string): TeamId | undefined {
-  if (match.status !== "finished" || match.winner === undefined) {
+  if (match.status !== "finished") {
     return;
   }
   if (match.players.A.includes(ownerId)) {

@@ -72,17 +72,17 @@ describe("first-launch seed", () => {
     const driver = seeded();
     const stats = computeProfileStats(driver, "nico");
     expect(stats.played).toBe(12);
-    expect(stats.record).toEqual({ won: 8, lost: 4 });
+    expect(stats.record).toEqual({ won: 8, lost: 4, drew: 0 });
     expect(stats.winRatePercent).toBe(67);
-    expect(stats.form).toEqual([true, false, true, true, true]);
+    expect(stats.form).toEqual(["won", "lost", "won", "won", "won"]);
     expect(stats.partners).toEqual([
-      { playerId: "javi", name: "Javi", won: 8, lost: 3 },
-      { playerId: "ana", name: "Ana", won: 0, lost: 1 },
+      { playerId: "javi", name: "Javi", won: 8, lost: 3, drew: 0 },
+      { playerId: "ana", name: "Ana", won: 0, lost: 1, drew: 0 },
     ]);
     expect(stats.headToHead).toEqual([
-      { label: "Marta & Leo", won: 4, lost: 3 },
-      { label: "Ana & Pablo", won: 3, lost: 1 },
-      { label: "Carla & Hugo", won: 1, lost: 0 },
+      { label: "Marta & Leo", won: 4, lost: 3, drew: 0 },
+      { label: "Ana & Pablo", won: 3, lost: 1, drew: 0 },
+      { label: "Carla & Hugo", won: 1, lost: 0, drew: 0 },
     ]);
   });
 });

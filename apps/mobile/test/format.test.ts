@@ -11,6 +11,8 @@ import {
   megabytesLabel,
   pairInitials,
   pairLabel,
+  recordLabel,
+  resultLabel,
   timeLabel,
 } from "../src/lib/format.ts";
 
@@ -165,5 +167,20 @@ describe("pickleball score lines", () => {
     const snapshot = computeMatch(doubles, events);
     expect(matchContext(snapshot)).toEqual({ label: "GAME 2", score: "11-0 · 1-0-2" });
     expect(matchContext(snapshot).score).toBe(liveScoreLine(snapshot));
+  });
+});
+
+describe("draw wording", () => {
+  it("reads a win as DEF. and a level early stop as DREW WITH", () => {
+    expect(resultLabel("Cameron", false)).toBe("DEF. CAMERON");
+    expect(resultLabel("Cameron", true)).toBe("DREW WITH CAMERON");
+  });
+
+  it("omits the draw count from a record with no level stops", () => {
+    expect(recordLabel({ won: 3, lost: 2, drew: 0 })).toBe("3–2");
+  });
+
+  it("appends the draw count once there are level early stops", () => {
+    expect(recordLabel({ won: 3, lost: 2, drew: 1 })).toBe("3–2–1");
   });
 });

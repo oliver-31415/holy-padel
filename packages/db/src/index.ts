@@ -72,12 +72,13 @@ export {
 export type {
   HeadToHeadRecord,
   LifetimePoints,
+  Outcome,
   PartnerRecord,
   PointsTotals,
   ProfileStats,
   WinLoss,
 } from "./profile.ts";
-export { computePointsTotals, computeProfileStats } from "./profile.ts";
+export { computePointsTotals, computeProfileStats, outcomeFor } from "./profile.ts";
 export { repairEarlyStopWinners, repairMissingEvents } from "./repair.ts";
 export { databaseSizeBytes, migrate } from "./schema.ts";
 export { getSetting, setSetting } from "./settings.ts";

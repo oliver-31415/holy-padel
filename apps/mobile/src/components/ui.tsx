@@ -111,29 +111,32 @@ export function Avatar({
   );
 }
 
-/** W/L chip from the form strips and match rows. */
+/** W/L/D chip from the form strips and match rows. A draw is neither a win nor a loss. */
 export function ResultBadge({
   won,
+  drew = false,
   size = 24,
 }: {
   readonly won: boolean;
+  readonly drew?: boolean;
   readonly size?: number;
 }): ReactNode {
+  const letter = drew ? "D" : won ? "W" : "L";
   return (
     <View
       width={size}
       height={size}
       borderRadius={size * 0.3}
-      backgroundColor={won ? colors.accent : colors.greige}
+      backgroundColor={won && !drew ? colors.accent : colors.greige}
       alignItems="center"
       justifyContent="center"
     >
       <Display
         fontSize={size * 0.46}
-        color={won ? colors.onAccent : textAlpha(0.55)}
+        color={won && !drew ? colors.onAccent : textAlpha(0.55)}
         letterSpacing={0}
       >
-        {won ? "W" : "L"}
+        {letter}
       </Display>
     </View>
   );

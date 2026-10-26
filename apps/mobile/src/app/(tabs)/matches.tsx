@@ -37,7 +37,8 @@ const FILTER_PREDICATES: Record<
 > = {
   all: () => true,
   won: (match, ownerTeam) => match.status === "finished" && match.winner === ownerTeam,
-  lost: (match, ownerTeam) => match.status === "finished" && match.winner !== ownerTeam,
+  lost: (match, ownerTeam) =>
+    match.status === "finished" && match.winner !== undefined && match.winner !== ownerTeam,
   rivals: (match, ownerTeam, rivals) => opponentKey(match, ownerTeam) === rivals,
 };
 
@@ -95,7 +96,11 @@ function MatchRow({
             </Display>
           </Pill>
         ) : (
-          <ResultBadge won={match.winner === ownerTeam} size={30} />
+          <ResultBadge
+            won={match.winner === ownerTeam}
+            drew={match.winner === undefined}
+            size={30}
+          />
         )}
       </XStack>
     </Card>

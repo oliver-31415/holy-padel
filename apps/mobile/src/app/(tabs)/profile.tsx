@@ -28,7 +28,7 @@ import {
   type HealthStatus,
   requestHealthAuthorization,
 } from "@/health/health-log.ts";
-import { durationLabel, megabytesLabel } from "@/lib/format.ts";
+import { durationLabel, megabytesLabel, recordLabel } from "@/lib/format.ts";
 import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
 import { loadThemeSetting, useSetThemeSetting } from "@/theme/theme.tsx";
 
@@ -228,7 +228,10 @@ export default function ProfileScreen(): ReactNode {
       ["Squash", stats.recordsBySport.squash, points.bySport.squash],
       ["Pickleball", stats.recordsBySport.pickleball, points.bySport.pickleball],
     ] as const
-  ).filter(([, record, totals]) => record.won + record.lost > 0 || totals.for + totals.against > 0);
+  ).filter(
+    ([, record, totals]) =>
+      record.won + record.lost + record.drew > 0 || totals.for + totals.against > 0,
+  );
 
   return (
     <ScrollView
@@ -270,11 +273,7 @@ export default function ProfileScreen(): ReactNode {
 
       <XStack gap={8}>
         <StatTile value={String(stats.played)} label="PLAYED" variant="ink" />
-        <StatTile
-          value={`${String(stats.record.won)}–${String(stats.record.lost)}`}
-          label="RECORD"
-          variant="accent"
-        />
+        <StatTile value={recordLabel(stats.record)} label="RECORD" variant="accent" />
         <StatTile value={winRate} label="WIN RATE" variant="white" />
       </XStack>
 
@@ -282,9 +281,14 @@ export default function ProfileScreen(): ReactNode {
         <XStack alignItems="center" justifyContent="space-between">
           <Overline>FORM · LAST 5</Overline>
           <XStack gap={6}>
-            {stats.form.map((won, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: the strip is positional by design
-              <ResultBadge key={index} won={won} size={25} />
+            {stats.form.map((outcome, index) => (
+              <ResultBadge
+                // biome-ignore lint/suspicious/noArrayIndexKey: the strip is positional by design
+                key={index}
+                won={outcome === "won"}
+                drew={outcome === "drew"}
+                size={25}
+              />
             ))}
           </XStack>
         </XStack>
@@ -345,7 +349,7 @@ export default function ProfileScreen(): ReactNode {
                   {label}
                 </Body>
                 <Display fontSize={15} width={COLUMN_RECORD} textAlign="right">
-                  {`${String(record.won)}–${String(record.lost)}`}
+                  {recordLabel(record)}
                 </Display>
                 <Display
                   fontSize={15}

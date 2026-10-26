@@ -4,9 +4,22 @@ import type { SqlDriver } from "./driver.ts";
 import type { MatchSummary } from "./match-types.ts";
 import { listMatches, loadEvents } from "./matches.ts";
 
+/** How a finished match went for one team. A level early stop is a draw. */
+export type Outcome = "won" | "lost" | "drew";
+
+/** The owner's (or a player's) result in a finished match, from their team's side. */
+export function outcomeFor(winner: TeamId | undefined, team: TeamId): Outcome {
+  if (winner === undefined) {
+    return "drew";
+  }
+  return winner === team ? "won" : "lost";
+}
+
 export interface WinLoss {
   readonly won: number;
   readonly lost: number;
+  /** Level early stops — played, but neither a win nor a loss. */
+  readonly drew: number;
 }
 
 export interface PartnerRecord extends WinLoss {
@@ -24,8 +37,8 @@ export interface ProfileStats {
   readonly record: WinLoss;
   /** 0-100, rounded — the design shows "67%". */
   readonly winRatePercent: number;
-  /** Most recent finished matches first: true = won. */
-  readonly form: readonly boolean[];
+  /** Most recent finished matches first. */
+  readonly form: readonly Outcome[];
   /** The run the owner is on right now (undefined with no finished matches). */
   readonly streak: { readonly kind: "won" | "lost"; readonly count: number } | undefined;
   /** Longest winning run across all finished matches. */
@@ -65,18 +78,18 @@ function matchDurationMs(match: MatchSummary): number {
   return Math.max(0, match.endedAt - match.startedAt - match.pausedMs);
 }
 
-/** Consecutive wins/losses starting at the most recent result. */
+/** Consecutive wins/losses starting at the most recent result; a draw breaks the run. */
 function currentStreakOf(
   byRecency: readonly OwnedResult[],
 ): { kind: "won" | "lost"; count: number } | undefined {
   const [first] = byRecency;
-  if (first === undefined) {
+  if (first === undefined || first.outcome === "drew") {
     return;
   }
-  const kind = first.won ? ("won" as const) : ("lost" as const);
+  const kind = first.outcome;
   let count = 0;
   for (const result of byRecency) {
-    if (result.won !== (kind === "won")) {
+    if (result.outcome !== kind) {
       break;
     }
     count += 1;
@@ -89,7 +102,7 @@ function bestWinStreakOf(chronological: readonly OwnedResult[]): number {
   let best = 0;
   let run = 0;
   for (const result of chronological) {
-    run = result.won ? run + 1 : 0;
+    run = result.outcome === "won" ? run + 1 : 0;
     best = Math.max(best, run);
   }
   return best;
@@ -105,23 +118,43 @@ function ownerTeamOf(match: MatchSummary, ownerId: string): TeamId | undefined {
 interface OwnedResult {
   readonly match: MatchSummary;
   readonly ownerTeam: TeamId;
-  readonly won: boolean;
+  readonly outcome: Outcome;
+}
+
+interface MutableWinLoss {
+  won: number;
+  lost: number;
+  drew: number;
+}
+
+function emptyTally(): MutableWinLoss {
+  return { won: 0, lost: 0, drew: 0 };
+}
+
+function tally(record: MutableWinLoss, outcome: Outcome): void {
+  if (outcome === "won") {
+    record.won += 1;
+  } else if (outcome === "lost") {
+    record.lost += 1;
+  } else {
+    record.drew += 1;
+  }
 }
 
 function finishedResults(matches: readonly MatchSummary[], ownerId: string): OwnedResult[] {
   const results: OwnedResult[] = [];
   for (const match of matches) {
     const ownerTeam = ownerTeamOf(match, ownerId);
-    if (match.status === "finished" && ownerTeam !== undefined && match.winner !== undefined) {
-      results.push({ match, ownerTeam, won: match.winner === ownerTeam });
+    if (match.status === "finished" && ownerTeam !== undefined) {
+      results.push({ match, ownerTeam, outcome: outcomeFor(match.winner, ownerTeam) });
     }
   }
   return results;
 }
 
 function partnerRecords(results: readonly OwnedResult[], ownerId: string): PartnerRecord[] {
-  const byPartner = new Map<string, { name: string; won: number; lost: number }>();
-  for (const { match, ownerTeam, won } of results) {
+  const byPartner = new Map<string, { name: string } & MutableWinLoss>();
+  for (const { match, ownerTeam, outcome } of results) {
     const ids = match.players[ownerTeam];
     const names = match.names[ownerTeam];
     const partnerIndex = ids[0] === ownerId ? 1 : 0;
@@ -129,45 +162,35 @@ function partnerRecords(results: readonly OwnedResult[], ownerId: string): Partn
     const partnerName = names[partnerIndex];
     // Legacy rows may repeat the owner in both slots — that's not a partner.
     if (partnerId !== undefined && partnerName !== undefined && partnerId !== ownerId) {
-      const entry = byPartner.get(partnerId) ?? { name: partnerName, won: 0, lost: 0 };
-      if (won) {
-        entry.won += 1;
-      } else {
-        entry.lost += 1;
-      }
+      const entry = byPartner.get(partnerId) ?? { name: partnerName, ...emptyTally() };
+      tally(entry, outcome);
       byPartner.set(partnerId, entry);
     }
   }
   return [...byPartner.entries()]
-    .map(([playerId, entry]) => ({
-      playerId,
-      name: entry.name,
-      won: entry.won,
-      lost: entry.lost,
-    }))
-    .sort((left, right) => right.won + right.lost - (left.won + left.lost));
+    .map(([playerId, entry]) => ({ playerId, ...entry }))
+    .sort((left, right) => playedOf(right) - playedOf(left));
 }
 
 function headToHeadRecords(results: readonly OwnedResult[]): HeadToHeadRecord[] {
-  const byOpponents = new Map<string, { label: string; won: number; lost: number }>();
-  for (const { match, ownerTeam, won } of results) {
+  const byOpponents = new Map<string, { label: string } & MutableWinLoss>();
+  for (const { match, ownerTeam, outcome } of results) {
     const opponentTeam: TeamId = ownerTeam === "A" ? "B" : "A";
     const label = pairText(match.names[opponentTeam]);
     const key = [...match.players[opponentTeam]]
       .filter((p): p is string => p !== undefined)
       .sort()
       .join("+");
-    const entry = byOpponents.get(key) ?? { label, won: 0, lost: 0 };
-    if (won) {
-      entry.won += 1;
-    } else {
-      entry.lost += 1;
-    }
+    const entry = byOpponents.get(key) ?? { label, ...emptyTally() };
+    tally(entry, outcome);
     byOpponents.set(key, entry);
   }
-  return [...byOpponents.values()]
-    .map((entry) => ({ label: entry.label, won: entry.won, lost: entry.lost }))
-    .sort((left, right) => right.won + right.lost - (left.won + left.lost));
+  return [...byOpponents.values()].sort((left, right) => playedOf(right) - playedOf(left));
+}
+
+/** Every finished match counts as played, draws included. */
+function playedOf(record: WinLoss): number {
+  return record.won + record.lost + record.drew;
 }
 
 /**
@@ -176,31 +199,28 @@ function headToHeadRecords(results: readonly OwnedResult[]): HeadToHeadRecord[] 
  */
 export function computeProfileStats(driver: SqlDriver, ownerId: string): ProfileStats {
   const results = finishedResults(listMatches(driver), ownerId);
-  const won = results.filter((result) => result.won).length;
-  const lost = results.length - won;
+  const record = emptyTally();
+  for (const result of results) {
+    tally(record, result.outcome);
+  }
   const byRecency = [...results].sort(
     (left, right) => (right.match.endedAt ?? 0) - (left.match.endedAt ?? 0),
   );
   const chronological = [...byRecency].reverse();
   const totalDurationMs = results.reduce((sum, result) => sum + matchDurationMs(result.match), 0);
-  const bySportRecords: Record<"padel" | "squash" | "pickleball", { won: number; lost: number }> = {
-    padel: { won: 0, lost: 0 },
-    squash: { won: 0, lost: 0 },
-    pickleball: { won: 0, lost: 0 },
+  const bySportRecords: Record<"padel" | "squash" | "pickleball", MutableWinLoss> = {
+    padel: emptyTally(),
+    squash: emptyTally(),
+    pickleball: emptyTally(),
   };
   for (const result of results) {
-    const sport = bySportRecords[result.match.config.sport ?? "padel"];
-    if (result.won) {
-      sport.won += 1;
-    } else {
-      sport.lost += 1;
-    }
+    tally(bySportRecords[result.match.config.sport ?? "padel"], result.outcome);
   }
   return {
     played: results.length,
-    record: { won, lost },
-    winRatePercent: results.length === 0 ? 0 : Math.round((won / results.length) * PERCENT),
-    form: byRecency.slice(0, FORM_LENGTH).map((result) => result.won),
+    record,
+    winRatePercent: results.length === 0 ? 0 : Math.round((record.won / results.length) * PERCENT),
+    form: byRecency.slice(0, FORM_LENGTH).map((result) => result.outcome),
     streak: currentStreakOf(byRecency),
     bestWinStreak: bestWinStreakOf(chronological),
     totalDurationMs,
@@ -243,7 +263,7 @@ export function computePointsTotals(driver: SqlDriver, ownerId: string): Lifetim
     pickleball,
   };
   for (const match of listMatches(driver)) {
-    if (match.status !== "finished" || match.winner === undefined) {
+    if (match.status !== "finished") {
       continue;
     }
     const ownerTeam = ownerTeamOf(match, ownerId);
