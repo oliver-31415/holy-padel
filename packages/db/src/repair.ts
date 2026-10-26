@@ -1,8 +1,8 @@
 import type { MatchConfig, PointEvent, TeamId } from "@holy-padel/scoring";
-import { computeMatch } from "@holy-padel/scoring";
+import { computeMatch, outcomeWinner } from "@holy-padel/scoring";
 import type { SqlDriver } from "./driver.ts";
 import type { MatchSummary } from "./match-types.ts";
-import { appendEvents, listMatches, loadEvents } from "./matches.ts";
+import { appendEvents, listMatches, loadEvents, setFinishedWinner } from "./matches.ts";
 
 /**
  * Rebuild a finished match's point ledger from its cached score line — the
@@ -41,6 +41,36 @@ export function repairMissingEvents(driver: SqlDriver): number {
       appendEvents(driver, match.id, events);
       repaired += 1;
     }
+  }
+  return repaired;
+}
+
+/**
+ * Turn level early stops that were saved with a winner into draws. Matches
+ * ended before a natural finish used to be saved with a winner picked by the
+ * leader's total points, so a level stop was recorded as a win. The ledger
+ * decides only the level case: when `outcomeWinner` reads the replayed
+ * snapshot as undefined (a draw), a stored winner is cleared to NULL. A stored
+ * winner is never flipped to the other side, so a result the user has already
+ * seen does not change. Natural finishes, stops the current rule still
+ * credits, and matches with no ledger are left alone. Idempotent.
+ */
+export function repairEarlyStopWinners(driver: SqlDriver): number {
+  let repaired = 0;
+  for (const match of listMatches(driver)) {
+    if (match.status !== "finished" || match.winner === undefined) {
+      continue;
+    }
+    const events = loadEvents(driver, match.id);
+    if (events.length === 0) {
+      continue;
+    }
+    const snapshot = computeMatch(match.config, events);
+    if (snapshot.finished || outcomeWinner(snapshot) !== undefined) {
+      continue;
+    }
+    setFinishedWinner(driver, match.id, undefined);
+    repaired += 1;
   }
   return repaired;
 }

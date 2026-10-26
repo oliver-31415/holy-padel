@@ -1,5 +1,5 @@
 import type { SqlDriver, SqlRow, SqlValue } from "@holy-padel/db";
-import { migrate, repairMissingEvents } from "@holy-padel/db";
+import { migrate, repairEarlyStopWinners, repairMissingEvents } from "@holy-padel/db";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { openDatabaseAsync } from "expo-sqlite";
 import { settleLiveMatches } from "@/lib/match-actions.ts";
@@ -30,6 +30,7 @@ export async function openAppDatabase(): Promise<SqlDriver> {
   // Matches whose rallies were lost (e.g. a device restore) get their ledgers
   // replayed from the cached score line so graphs and stats work again.
   repairMissingEvents(driver);
+  repairEarlyStopWinners(driver);
   // Decided-but-unsaved and orphaned "live" matches get their results saved.
   settleLiveMatches(driver);
   // biome-ignore lint/style/noProcessEnv: Expo inlines EXPO_PUBLIC_* at bundle time
