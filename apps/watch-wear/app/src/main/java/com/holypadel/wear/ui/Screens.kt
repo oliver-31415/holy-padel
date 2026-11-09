@@ -55,6 +55,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
@@ -85,13 +86,26 @@ fun WatchApp(
     onEnd: () -> Unit,
     lockEnabled: Boolean,
     onLockChange: (Boolean) -> Unit,
+    flipped: Boolean,
+    onFlipChange: (Boolean) -> Unit,
+    ambient: Boolean,
 ) {
     Box(
-        modifier = Modifier.fillMaxSize().background(CourtColors.Black),
+        // Rotating the whole tree (crown and all) for an upside-down wear. Compose maps
+        // pointer input through graphicsLayer transforms, so taps still hit the right buttons.
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CourtColors.Black)
+            .graphicsLayer { rotationZ = if (flipped) 180f else 0f },
         contentAlignment = Alignment.Center,
     ) {
-        when (state.phase) {
-            Phase.IDLE -> IdleScreen(state, onStartLast, lockEnabled, onLockChange)
+        // Wrist down mid-match: show the low-power scoreboard instead of the pager, so
+        // the system doesn't fall back to the watch face and background the app.
+        if (ambient && state.phase == Phase.LIVE) {
+            BackHandler(enabled = lockEnabled) {}
+            AmbientScoreScreen(state)
+        } else when (state.phase) {
+            Phase.IDLE -> IdleScreen(state, onStartLast, lockEnabled, onLockChange, flipped, onFlipChange)
             Phase.LIVE -> LiveScoreScreen(
                 state,
                 liveBpm,
@@ -114,9 +128,12 @@ private fun IdleScreen(
     onStartLast: () -> Unit,
     lockEnabled: Boolean,
     onLockChange: (Boolean) -> Unit,
+    flipped: Boolean,
+    onFlipChange: (Boolean) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 20.dp),
+        // Narrower margins than the other pages: the two toggles share one row.
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -145,12 +162,27 @@ private fun IdleScreen(
             }
         }
         Spacer(Modifier.height(10.dp))
-        PillButton(
-            label = if (lockEnabled) "APP LOCK: ON" else "APP LOCK: OFF",
-            background = if (lockEnabled) CourtColors.Accent else CourtColors.White.copy(alpha = 0.14f),
-            text = if (lockEnabled) CourtColors.Ink else CourtColors.White,
-            onClick = { onLockChange(!lockEnabled) },
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            PillButton(
+                label = if (lockEnabled) "LOCK ON" else "LOCK OFF",
+                background = if (lockEnabled) CourtColors.Accent else CourtColors.White.copy(alpha = 0.14f),
+                text = if (lockEnabled) CourtColors.Ink else CourtColors.White,
+                onClick = { onLockChange(!lockEnabled) },
+                modifier = Modifier.weight(1f),
+                compact = true,
+            )
+            PillButton(
+                label = if (flipped) "FLIP ON" else "FLIP OFF",
+                background = if (flipped) CourtColors.Accent else CourtColors.White.copy(alpha = 0.14f),
+                text = if (flipped) CourtColors.Ink else CourtColors.White,
+                onClick = { onFlipChange(!flipped) },
+                modifier = Modifier.weight(1f),
+                compact = true,
+            )
+        }
         Spacer(Modifier.height(10.dp))
         BodyText("or set up on phone", color = CourtColors.White40, sizeSp = 10)
     }
@@ -264,6 +296,44 @@ private fun TimeOfDay() {
         sizeSp = 14,
         weight = FontWeight.Bold,
     )
+}
+
+/**
+ * The wrist-down view mid-match: plain black with the two scores, no pager, buttons or
+ * accent fills. Ambient displays are dimmed and rarely refreshed, so the score is the
+ * only thing that has to read at a glance.
+ */
+@Composable
+private fun AmbientScoreScreen(state: MatchState) {
+    val line = buildList {
+        if (state.setLabel.isNotEmpty()) add(state.setLabel)
+        if (state.games.isNotEmpty()) add(state.games)
+        if (state.paused) add("PAUSED")
+    }.joinToString("  ")
+    Column(
+        modifier = Modifier.fillMaxSize().padding(vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        TimeOfDay()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AmbientTeam(state.teamA.short, state.pointA)
+            AmbientTeam(state.teamB.short, state.pointB)
+        }
+        if (line.isNotEmpty()) LabelText(line, color = CourtColors.White45, sizeSp = 11)
+    }
+}
+
+@Composable
+private fun AmbientTeam(short: String, point: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        LabelText(short, color = CourtColors.White45, sizeSp = 10)
+        DisplayText(point, sizeSp = 52, color = CourtColors.White)
+    }
 }
 
 /** "12:34", or "1:02:09" past the hour. */
@@ -501,8 +571,8 @@ private fun ControlsPage(
             // Inline confirm — no dialog dependency; discard is one deliberate tap away.
             LabelText("DISCARD? SCORE LOST", color = CourtColors.White45, sizeSp = 9)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PillButton("DISCARD", CourtColors.White.copy(alpha = 0.14f), CourtColors.White, onCancel)
-                PillButton("KEEP", CourtColors.Accent, CourtColors.Ink) { confirmingCancel = false }
+                PillButton("DISCARD", CourtColors.White.copy(alpha = 0.14f), CourtColors.White, onClick = onCancel)
+                PillButton("KEEP", CourtColors.Accent, CourtColors.Ink, onClick = { confirmingCancel = false })
             }
         } else {
             // Stop AND save — the filled square, "court time's up, don't lose the score".
@@ -590,15 +660,23 @@ private fun LabeledControl(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun PillButton(label: String, background: Color, text: Color, onClick: () -> Unit) {
+private fun PillButton(
+    label: String,
+    background: Color,
+    text: Color,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+    onClick: () -> Unit,
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(background)
             .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 7.dp),
+            .padding(horizontal = if (compact) 8.dp else 14.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        LabelText(label, color = text, sizeSp = 11)
+        LabelText(label, color = text, sizeSp = if (compact) 10 else 11)
     }
 }
 

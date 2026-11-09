@@ -81,4 +81,8 @@ dependencies {
     // Wear ongoing activity — the live match shows on the watch face and in the ongoing
     // slot. Signatures checked against the 1.1.0 release AAR; core-ktx stays pinned above.
     implementation("androidx.wear:wear-ongoing:1.1.0")
+
+    // Ambient mode — the Wear lifecycle observer that lets the scoreboard dim to a
+    // low-power view on wrist-down instead of the system backgrounding the app.
+    implementation("androidx.wear:wear:1.3.0")
 }

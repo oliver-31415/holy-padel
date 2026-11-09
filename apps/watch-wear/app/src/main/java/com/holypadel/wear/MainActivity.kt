@@ -2,6 +2,7 @@ package com.holypadel.wear
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,7 +13,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.wear.ambient.AmbientLifecycleObserver
 import com.holypadel.wear.ui.CourtColors
 import com.holypadel.wear.ui.WatchApp
 import kotlinx.coroutines.launch
@@ -32,16 +35,22 @@ class MainActivity : ComponentActivity() {
     private var lastPaused = false
     private var pendingStartedAt = 0L
 
-    /** Ask for the sensor permission at most once per process — never nag. */
+    /** True while the wrist is down: the scoreboard switches to its low-power view. */
+    private var ambient by mutableStateOf(false)
+
+    /** Ask for the runtime permissions at most once per process — never nag. */
     private var permissionRequested = false
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
-            // Only the heart-rate grant matters: the service needs it to promote to a
-            // health foreground service. If it was declined the scoreboard simply runs
-            // without bpm, which is fine.
-            if (hasHeartRatePermission(this)) {
+            // Heart rate starts the exercise if it isn't running yet. If it is, only the
+            // notification permission was asked for, so re-post the ongoing notification
+            // rather than restart the tracker. Declining heart rate just means no bpm.
+            // Only a live match starts one: the lock toggle can ask from the idle screen.
+            if (lastPhase == Phase.LIVE && hasHeartRatePermission(this) && !ExerciseService.running) {
                 ExerciseService.start(this, pendingStartedAt)
+            } else {
+                ExerciseService.refreshNotification(this)
             }
         }
 
@@ -50,6 +59,23 @@ class MainActivity : ComponentActivity() {
         sync = WatchSync(this)
         tracker = ExerciseSession.tracker(this)
         lockPrefs = MatchLockPrefs(this)
+
+        // Without ambient support, wrist-down sends the app to the background and the
+        // watch face shows. Handling it keeps the live score on screen instead.
+        lifecycle.addObserver(
+            AmbientLifecycleObserver(
+                this,
+                object : AmbientLifecycleObserver.AmbientLifecycleCallback {
+                    override fun onEnterAmbient(ambientDetails: AmbientLifecycleObserver.AmbientDetails) {
+                        ambient = true
+                    }
+
+                    override fun onExitAmbient() {
+                        ambient = false
+                    }
+                },
+            ),
+        )
 
         // Drive the exercise session from phase transitions in the mirrored state.
         lifecycleScope.launch {
@@ -77,11 +103,19 @@ class MainActivity : ComponentActivity() {
             val state by sync.state.collectAsState()
             val stats by tracker.stats.collectAsState()
             var lockEnabled by remember { mutableStateOf(lockPrefs.isEnabled()) }
+            var flipped by remember { mutableStateOf(lockPrefs.isFlipped()) }
             WatchApp(
                 lockEnabled = lockEnabled,
                 onLockChange = { on ->
                     lockEnabled = on
                     lockPrefs.setEnabled(on)
+                    // The lock is for a live match, and its ongoing chip needs the permission.
+                    if (on) requestNotificationIfMissing()
+                },
+                flipped = flipped,
+                onFlipChange = { on ->
+                    flipped = on
+                    lockPrefs.setFlipped(on)
                 },
                 state = state,
                 liveBpm = if (stats.tracking) stats.bpm else 0,
@@ -93,6 +127,7 @@ class MainActivity : ComponentActivity() {
                 onStop = { sync.stopMatch() },
                 onCancel = { sync.cancelMatch() },
                 onEnd = { sync.end() },
+                ambient = ambient,
             )
         }
     }
@@ -117,24 +152,40 @@ class MainActivity : ComponentActivity() {
 
     private fun startTracking(startedAt: Long) {
         pendingStartedAt = startedAt
-        // Already granted (e.g. a previous match): start straight away, no prompt.
-        // Otherwise ask exactly once per process; if it's declined we simply never
-        // ask again and the scoreboard runs on without any fitness data. Either
-        // way the UI is already up and fully interactive — nothing gates on this.
-        when {
-            hasHeartRatePermission(this) -> ExerciseService.start(this, startedAt)
-            !permissionRequested -> {
-                permissionRequested = true
-                val permissions = buildList {
-                    add(heartRatePermission())
+        // Ask only for what is missing, once per process; if it's declined we never ask
+        // again. The UI is already up and interactive either way — nothing gates on this.
+        if (hasHeartRatePermission(this)) {
+            // The exercise doesn't need the notification permission, so start now. The
+            // service re-posts its notification when that permission is granted.
+            ExerciseService.start(this, startedAt)
+            requestNotificationIfMissing()
+        } else if (!permissionRequested) {
+            permissionRequested = true
+            val permissions = buildList {
+                add(heartRatePermission())
+                if (!isGranted(Manifest.permission.ACTIVITY_RECOGNITION)) {
                     add(Manifest.permission.ACTIVITY_RECOGNITION)
-                    // Runtime notification permission only exists from API 33.
-                    if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
                 }
-                permissionLauncher.launch(permissions.toTypedArray())
+                if (needsNotificationPermission()) add(Manifest.permission.POST_NOTIFICATIONS)
             }
+            permissionLauncher.launch(permissions.toTypedArray())
         }
     }
+
+    /** Without the notification permission the ongoing chip and foreground notification stay hidden. */
+    private fun requestNotificationIfMissing() {
+        if (!permissionRequested && needsNotificationPermission()) {
+            permissionRequested = true
+            permissionLauncher.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+        }
+    }
+
+    /** Runtime notification permission only exists from API 33. */
+    private fun needsNotificationPermission(): Boolean =
+        Build.VERSION.SDK_INT >= 33 && !isGranted(Manifest.permission.POST_NOTIFICATIONS)
+
+    private fun isGranted(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     override fun onResume() {
         super.onResume()
