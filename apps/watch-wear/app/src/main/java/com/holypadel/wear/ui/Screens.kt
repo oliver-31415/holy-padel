@@ -15,6 +15,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
+import androidx.wear.compose.material3.onehandedgesture.OneHandedGestureAction
+import androidx.wear.compose.material3.onehandedgesture.oneHandedGesture
+import androidx.wear.compose.material3.onehandedgesture.rememberOneHandedGestureConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import android.text.format.DateFormat
@@ -248,7 +251,19 @@ private fun LiveScoreScreen(
     } else {
         Modifier
     }
-    Box(modifier = Modifier.fillMaxSize().then(crownModifier)) {
+    // Wrist turn is the system dismiss (back) on Pixel Watch. An empty subscription swallows it
+    // while locked, as Google advises for active workout screens.
+    val wristTurn = rememberOneHandedGestureConfiguration(action = OneHandedGestureAction.Dismiss)
+    val wristModifier = if (locked) {
+        Modifier.oneHandedGesture(
+            gestureConfiguration = wristTurn,
+            onGestureLabel = "match locked",
+            onGesture = {},
+        )
+    } else {
+        Modifier
+    }
+    Box(modifier = Modifier.fillMaxSize().then(wristModifier).then(crownModifier)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
             if (page == 0) {
                 ControlsPage(state, onUndo, onPause, onStop, onCancel, locked, onUnlock = { unlocked = true })

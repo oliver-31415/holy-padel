@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.holypadel.wear"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         // Must match the phone app's applicationId so the Wearable Data Layer pairs them.
@@ -60,9 +60,10 @@ dependencies {
 
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
+    // One-handed gesture API: lets the match lock swallow the wrist-turn dismiss on Wear OS 7+; no-op elsewhere.
+    implementation("androidx.wear.compose:compose-material3:1.7.1")
     implementation("androidx.activity:activity-compose:1.13.0")
-    // core-ktx 1.19.0 requires compileSdk 37; 1.18.0 is the latest that builds
-    // against the stable API 36 platform (and is what activity-compose pulls anyway).
+    // core-ktx stays at 1.18.0 (what activity-compose pulls anyway); 1.19.0 needs compileSdk 37.
     implementation("androidx.core:core-ktx:1.18.0")
 
     // Wearable Data Layer API — receives phone match state, sends score/undo intents.
