@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.wear.ambient.AmbientLifecycleObserver
 import com.holypadel.wear.ui.CourtColors
 import com.holypadel.wear.ui.WatchApp
 import kotlinx.coroutines.launch
@@ -34,9 +34,6 @@ class MainActivity : ComponentActivity() {
     private var lastPhase = Phase.IDLE
     private var lastPaused = false
     private var pendingStartedAt = 0L
-
-    /** True while the wrist is down: the scoreboard switches to its low-power view. */
-    private var ambient by mutableStateOf(false)
 
     /** Ask for the runtime permissions at most once per process — never nag. */
     private var permissionRequested = false
@@ -60,23 +57,6 @@ class MainActivity : ComponentActivity() {
         tracker = ExerciseSession.tracker(this)
         lockPrefs = MatchLockPrefs(this)
 
-        // Without ambient support, wrist-down sends the app to the background and the
-        // watch face shows. Handling it keeps the live score on screen instead.
-        lifecycle.addObserver(
-            AmbientLifecycleObserver(
-                this,
-                object : AmbientLifecycleObserver.AmbientLifecycleCallback {
-                    override fun onEnterAmbient(ambientDetails: AmbientLifecycleObserver.AmbientDetails) {
-                        ambient = true
-                    }
-
-                    override fun onExitAmbient() {
-                        ambient = false
-                    }
-                },
-            ),
-        )
-
         // Drive the exercise session from phase transitions in the mirrored state.
         lifecycleScope.launch {
             sync.state.collect { state ->
@@ -91,6 +71,13 @@ class MainActivity : ComponentActivity() {
                 // on a real change so we never spam the exercise client.
                 if (phase == Phase.LIVE && state.paused != lastPaused) {
                     if (state.paused) tracker.pause() else tracker.resume()
+                }
+                // Keep the screen awake for the whole match: a dimmed or sleeping screen
+                // costs an extra tap to wake before every point can be scored.
+                if (phase == Phase.LIVE) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
                 lastPhase = phase
                 lastPaused = if (phase == Phase.LIVE) state.paused else false
@@ -127,7 +114,6 @@ class MainActivity : ComponentActivity() {
                 onStop = { sync.stopMatch() },
                 onCancel = { sync.cancelMatch() },
                 onEnd = { sync.end() },
-                ambient = ambient,
             )
         }
     }

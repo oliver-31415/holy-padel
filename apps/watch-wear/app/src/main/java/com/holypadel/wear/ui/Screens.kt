@@ -91,7 +91,6 @@ fun WatchApp(
     onLockChange: (Boolean) -> Unit,
     flipped: Boolean,
     onFlipChange: (Boolean) -> Unit,
-    ambient: Boolean,
 ) {
     Box(
         // Rotating the whole tree (crown and all) for an upside-down wear. Compose maps
@@ -102,12 +101,7 @@ fun WatchApp(
             .graphicsLayer { rotationZ = if (flipped) 180f else 0f },
         contentAlignment = Alignment.Center,
     ) {
-        // Wrist down mid-match: show the low-power scoreboard instead of the pager, so
-        // the system doesn't fall back to the watch face and background the app.
-        if (ambient && state.phase == Phase.LIVE) {
-            BackHandler(enabled = lockEnabled) {}
-            AmbientScoreScreen(state)
-        } else when (state.phase) {
+        when (state.phase) {
             Phase.IDLE -> IdleScreen(state, onStartLast, lockEnabled, onLockChange, flipped, onFlipChange)
             Phase.LIVE -> LiveScoreScreen(
                 state,
@@ -119,6 +113,9 @@ fun WatchApp(
                 onStop,
                 onCancel,
                 lockEnabled,
+                onLockChange,
+                flipped,
+                onFlipChange,
             )
             Phase.WON -> MatchWonScreen(state, onEnd)
         }
@@ -192,10 +189,10 @@ private fun IdleScreen(
 }
 
 /**
- * Two sideways pages, like the Wear/Apple workout app: swipe between the
- * **controls** (undo, pause, stop-and-save, cancel) and the **score face** (tap a
- * team to score). Separating them keeps the score clean and makes an accidental
- * stop impossible while you're tapping points every rally.
+ * Three sideways pages, like the Wear/Apple workout app: swipe between the
+ * **settings** (lock and flip), the **controls** (undo, pause, stop-and-save, cancel)
+ * and the **score face** (tap a team to score). Separating them keeps the score clean
+ * and makes an accidental stop impossible while you're tapping points every rally.
  */
 @Composable
 private fun LiveScoreScreen(
@@ -208,9 +205,12 @@ private fun LiveScoreScreen(
     onStop: () -> Unit,
     onCancel: () -> Unit,
     lockEnabled: Boolean,
+    onLockChange: (Boolean) -> Unit,
+    flipped: Boolean,
+    onFlipChange: (Boolean) -> Unit,
 ) {
-    // Land on the score face (page 1) — the surface you touch every rally.
-    val pagerState = rememberPagerState(initialPage = 1) { 2 }
+    // Land on the score face (page 2) — the surface you touch every rally.
+    val pagerState = rememberPagerState(initialPage = 2) { 3 }
     // App lock: while locked, back and swipe-to-dismiss are swallowed. A hold on the
     // controls page or a crown turn unlocks for UNLOCK_WINDOW_MS, or until the score moves.
     var unlocked by remember { mutableStateOf(false) }
@@ -265,14 +265,21 @@ private fun LiveScoreScreen(
     }
     Box(modifier = Modifier.fillMaxSize().then(wristModifier).then(crownModifier)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-            if (page == 0) {
-                ControlsPage(state, onUndo, onPause, onStop, onCancel, locked, onUnlock = { unlocked = true })
-            } else {
-                ScorePage(state, liveBpm, onScore, onSetChoice, locked)
+            when (page) {
+                0 -> SettingsPage(
+                    lockEnabled,
+                    locked,
+                    flipped,
+                    onLockChange,
+                    onFlipChange,
+                    onUnlock = { unlocked = true },
+                )
+                1 -> ControlsPage(state, onUndo, onPause, onStop, onCancel, locked, onUnlock = { unlocked = true })
+                else -> ScorePage(state, liveBpm, onScore, onSetChoice, locked)
             }
         }
         PagerDots(
-            count = 2,
+            count = 3,
             current = pagerState.currentPage,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 3.dp),
         )
@@ -311,44 +318,6 @@ private fun TimeOfDay() {
         sizeSp = 14,
         weight = FontWeight.Bold,
     )
-}
-
-/**
- * The wrist-down view mid-match: plain black with the two scores, no pager, buttons or
- * accent fills. Ambient displays are dimmed and rarely refreshed, so the score is the
- * only thing that has to read at a glance.
- */
-@Composable
-private fun AmbientScoreScreen(state: MatchState) {
-    val line = buildList {
-        if (state.setLabel.isNotEmpty()) add(state.setLabel)
-        if (state.games.isNotEmpty()) add(state.games)
-        if (state.paused) add("PAUSED")
-    }.joinToString("  ")
-    Column(
-        modifier = Modifier.fillMaxSize().padding(vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        TimeOfDay()
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AmbientTeam(state.teamA.short, state.pointA)
-            AmbientTeam(state.teamB.short, state.pointB)
-        }
-        if (line.isNotEmpty()) LabelText(line, color = CourtColors.White45, sizeSp = 11)
-    }
-}
-
-@Composable
-private fun AmbientTeam(short: String, point: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        LabelText(short, color = CourtColors.White45, sizeSp = 10)
-        DisplayText(point, sizeSp = 52, color = CourtColors.White)
-    }
 }
 
 /** "12:34", or "1:02:09" past the hour. */
@@ -614,6 +583,49 @@ private fun ControlsPage(
 }
 
 /**
+ * Lock and flip toggles for a live match (the idle screen has them too). Turning the lock
+ * on is always allowed; turning it off waits for the hold-to-unlock, so a stray tap can't
+ * drop the lock.
+ */
+@Composable
+private fun SettingsPage(
+    lockEnabled: Boolean,
+    locked: Boolean,
+    flipped: Boolean,
+    onLockChange: (Boolean) -> Unit,
+    onFlipChange: (Boolean) -> Unit,
+    onUnlock: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+    ) {
+        if (locked) {
+            HoldToUnlock(onUnlock)
+        } else {
+            LabelText("SETTINGS", color = CourtColors.Accent, sizeSp = 11)
+        }
+        PillButton(
+            label = if (lockEnabled) "LOCK: ON" else "LOCK: OFF",
+            background = if (lockEnabled) CourtColors.Accent else CourtColors.White.copy(alpha = 0.14f),
+            text = if (lockEnabled) CourtColors.Ink else CourtColors.White,
+            // Locked means the lock is on and not yet released, so this is the only blocked toggle.
+            onClick = { if (!locked) onLockChange(!lockEnabled) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        PillButton(
+            label = if (flipped) "FLIP: ON" else "FLIP: OFF",
+            background = if (flipped) CourtColors.Accent else CourtColors.White.copy(alpha = 0.14f),
+            text = if (flipped) CourtColors.Ink else CourtColors.White,
+            onClick = { onFlipChange(!flipped) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (locked) LabelText("UNLOCK TO TURN OFF", color = CourtColors.White45, sizeSp = 9)
+    }
+}
+
+/**
  * App-lock release: press and hold for HOLD_MS. The ring fills while held and
  * snaps back if the finger lifts early, so a stray tap never unlocks.
  */
@@ -695,7 +707,7 @@ private fun PillButton(
     }
 }
 
-/** Two-page swipe indicator, drawn from the shared [Dot]. */
+/** Swipe-position indicator, drawn from the shared [Dot]. */
 @Composable
 private fun PagerDots(count: Int, current: Int, modifier: Modifier = Modifier) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
