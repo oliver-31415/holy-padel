@@ -21,7 +21,6 @@ conn+resume. Latest-wins (application context / a single Data Layer item at path
   "v": 1,                         // schema version
   "phase": "idle" | "live" | "won",
   "clock": "0:47",                // elapsed, mm or h:mm — empty when idle
-  "court": "COURT 4",             // may be absent
   "setLabel": "SET 2",            // "SET 2" / "GAME 2" / "SUPER TB"; empty in a
                                   // one-set (or one-game) match
   "teamA": { "short": "N&J", "serving": true, "servingSide": "right" },
@@ -32,7 +31,8 @@ conn+resume. Latest-wins (application context / a single Data Layer item at path
                                   // score itself: padel = set scores + games in
                                   // this set; squash/pickleball = games won
                                   // ("1-0"), empty in game 1; super TB = sets
-  "status": "GAME PT",            // watchStatusLabel(), may be empty
+  "status": "GAME PT",            // watchStatusLabel(), may be empty; both
+                                  // watches show it on the score face
   "choicePending": true,          // squash "choice" tie-break at target-1 all:
                                   // the watch shows its SHORT/LONG buttons while
                                   // set; absent otherwise
@@ -46,19 +46,34 @@ conn+resume. Latest-wins (application context / a single Data Layer item at path
   "won": {                        // present only when phase = "won"
     "winnerShort": "N&J",
     "scoreLine": "6-4 · 7-5",
-    "duration": "1:23"
+    "duration": "1:23",
+    "ownerWon": true              // whether the phone owner's team won, so the
+                                  // watch can say "Match won" or "Match lost";
+                                  // additive — absent from older phone builds
   },
   "last": {                       // present when phase = "idle" (quick-start hint)
     "line": "6-3 7-6 vs M&L",
     "won": true
   },
   "palette": {                    // the user's colours from Settings, always sent;
-    "accent": "#FF6B35",          // the bright (on-ink) highlight variant
-    "teamB": "#8B7CFF"            // Team B's colour
+    "accent": "#FF6B35",          // the highlight colour itself
+    "teamB": "#8B7CFF",           // Team B's colour
+    "roles": {                    // Wear OS Material 3 colour roles derived from
+      "primary": "#ffdbd0",       // the two picks (`watchRoles` in colors.ts) —
+      "primaryContainer": "#832600", // 27 of them, `#rrggbb`. Additive: Apple
+      "onPrimary": "#390c00"      // Watch ignores them; Wear falls back per role
+      // …                        // to its built-in orange / violet scheme
+    }
   }                               // additive: a watch that ignores it keeps its
                                   // built-in orange / violet
 }
 ```
+
+**Colours are computed on the phone.** The watch does no colour maths, just as
+it does no scoring: the phone derives the Wear scheme from the same tonal
+palettes as its own theme, using Wear's tone table (pale `primary` at tone 90,
+containers at tone 30, true-black background), and sends the result. Team names
+and the serve mark use `accent` / `teamB` directly.
 
 ## Watch → phone: intents
 
@@ -218,7 +233,8 @@ watches, neither scores anything itself.
   `WearableListenerService` filtered to the state path) asks for a tile refresh
   on every push, even when the app is closed.
 - **Android live notification** (`apps/mobile/src/live`, native module
-  `modules/live-notification`): an ongoing notification built from the same
+  `modules/live-notification`): the notification of the foreground service that
+  keeps the app alive during a match (see Transport resilience), built from the same
   gathered input as the watch payload (`buildLiveNotification`). It carries the
   point score, the match line, a running match clock, and **+ team** / **UNDO**
   buttons (**RESUME** while paused). A button tap comes back as an `onAction`
@@ -230,7 +246,10 @@ watches, neither scores anything itself.
 ## Notes
 
 - The watch UI derives entirely from `phase`: `idle` → quick-start card,
-  `live` → the scoreboard (square + round variants), `won` → the celebration.
+  `live` → the scoreboard (square + round variants), `won` → the result.
+- The Wear OS app is Material 3 Expressive (Wear Compose Material 3, plus
+  ProtoLayout Material 3 for the tile); the Apple Watch app keeps its own
+  SwiftUI look. Both render the same payload.
 - Serving dots, status pill and point calls come straight from the fields above —
   the watch does no scoring math.
 - **Undecided serves** (game 1 of any match, and pickleball games 2+): the phone
@@ -255,8 +274,23 @@ A watch tap must never be lost and must never block the UI on the round-trip:
   immediate channel when the phone is reachable *and* falls back to the
   queued/background-tolerant channel when it is not, so intents flush
   automatically on reconnect. On Apple Watch that is `sendMessage` (reachable) →
-  `transferUserInfo` (queued, survives the phone being asleep); on Wear OS the
-  `MessageClient` send is retried against connected nodes.
+  `transferUserInfo` (queued, survives the phone being asleep). On Wear OS every
+  intent goes through `IntentOutbox`: a queue sent strictly in order and retried
+  (every 1.5 s, and whenever a state push proves the phone is back) until a
+  phone node accepts it. While taps are waiting the watch says so — "Waiting for
+  phone · 3" — so a score that isn't moving doesn't read as a missed tap. A tap
+  belongs to the match it was made in (its `startedAt`): if the phone comes back
+  showing a different match, or none, the taps still waiting are dropped rather
+  than replayed into the wrong score. The workout summary is also written to
+  disk, so it survives the watch app closing before the phone returns.
+- **The Android phone stays alive for the whole match.** Intents are applied by
+  the phone app's JS, so the app must still be running when the watch taps. While
+  a match is live the app runs a foreground service (`LiveMatchService` in
+  `modules/live-notification`, type `connectedDevice`) whose notification is the
+  live-score notification; Android then won't freeze or kill the app in a pocket.
+  It stops when the match ends, and when the app is swiped away. A match started
+  from the watch while the phone app is in the background can't start the service
+  (Android forbids it) — it starts the next time the app is opened.
 - **Latest-wins self-heals.** State is latest-wins and the phone re-pushes on
   every change and every 30 s, so a reconnect converges the watch to the truth
   even if an intermediate push was missed — no event replay is needed.

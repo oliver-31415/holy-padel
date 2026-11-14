@@ -55,7 +55,7 @@ Port parity locally (only if reproducing an engine-ports failure yourself):
 
 ## Conventions
 
-- TypeScript strict with `exactOptionalPropertyTypes`: **omit** optional keys, never assign `undefined` (see the `courtField` spread pattern in `apps/mobile/src/watch/build-state.ts`).
+- TypeScript strict with `exactOptionalPropertyTypes`: **omit** optional keys, never assign `undefined` (see the `paletteField` spread pattern in `apps/mobile/src/watch/build-state.ts`).
 - Biome preset `all` + nursery. Autofix one file: `pnpm exec biome check --write <file>`. Do not lint or format `golden.json`.
 - Gitmoji micro-commits, one logical change each. Branch off `main` (protected) and open a PR. Never commit or push unless asked.
 - If a change reaches the ports, remember the native jobs (`engine-ports`, etc.) are **not required** checks — do not let auto-merge land before they report green.

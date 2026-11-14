@@ -44,12 +44,12 @@ Watches send `{ path, body }`. The paths, on `/holy-padel/`:
 phone and watch stay identical. Duration excludes paused breaks via `playedMs()` in
 `src/lib/format.ts`; don't recompute elapsed time by hand.
 
-## exactOptionalPropertyTypes — the courtField spread pattern
+## exactOptionalPropertyTypes — the paletteField spread pattern
 
 The mobile app is TS strict with `exactOptionalPropertyTypes`. **Omit an optional key entirely
-when absent; never set it to `undefined`.** In `build-state.ts` this is the `courtField` spread
-pattern — an optional field is built as a conditional spread (`...(x ? { court: x } : {})`)
-rather than assigned `court: x ?? undefined`. Copy that pattern for any new optional payload
+when absent; never set it to `undefined`.** In `build-state.ts` this is the `paletteField` spread
+pattern — an optional field is built as a conditional spread (`...(x === undefined ? {} : { palette: x })`)
+rather than assigned `palette: x ?? undefined`. Copy that pattern for any new optional payload
 field. This is not stylistic — the wrong shape fails typecheck and the `quality` CI check.
 
 ## Native builds & CI

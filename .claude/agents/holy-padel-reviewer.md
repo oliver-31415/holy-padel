@@ -5,7 +5,7 @@ description: >-
   branch, staged change, or PR before it lands — especially edits touching the
   scoring engine, the watch sync path, native/Expo modules, or Tamagui/theme
   code. Reviews against THIS repo's specific footguns (exactOptionalPropertyTypes,
-  Biome preset-all, Anton line-height clipping, phone-single-writer, golden-vector
+  Biome preset-all, Material colour roles, phone-single-writer, golden-vector
   parity, the local-Expo-module triad, required-vs-native CI split) and reports
   findings with file:line evidence.
 tools: Read, Grep, Glob, Bash
@@ -37,7 +37,7 @@ in doubt, the rulebook wins.
 
 - **exactOptionalPropertyTypes is on.** Optional keys are OMITTED, never set to
   `undefined`. Flag any `x: cond ? val : undefined` or `{ key: undefined }`; the
-  correct pattern is conditional spread — see the `courtField` spread in
+  correct pattern is conditional spread — see the `paletteField` spread in
   `apps/mobile/src/watch/build-state.ts`. This fails `typecheck` (a required
   check), so it is must-fix.
 - **Biome preset "all" + nursery, max strictness.** Assume lint is unforgiving:
@@ -45,9 +45,10 @@ in doubt, the rulebook wins.
   strays. `apps/mobile/targets` and `apps/mobile/modules` (native dirs) are
   excluded — don't flag style there. Verify with `pnpm lint` (= `biome check .`)
   or narrow to a file; autofix is `pnpm exec biome check --write <file>`.
-- **Anton (Display) line-height clipping.** NEVER set a tight `lineHeight` on
-  Anton/Display text — round glyphs clip and "0" reads as "U". Leave `lineHeight`
-  unset unless it is >= ~1.3x fontSize. Check any new Display/heading text style.
+- **Material roles, not hexes.** Phone UI takes colour from `colors.*` roles
+  (`apps/mobile/src/theme/colors.ts`), pairs each container with its on-colour,
+  and builds from the shared components in `components/ui.tsx` / `controls.tsx`.
+  Flag hard-coded hex, all-caps labels, shadows, and hand-rolled buttons.
 - **Phone is the single writer.** Watches are thin mirrors: they render pushed
   state and send intents only. Flag ANY scoring logic added to `apps/watch-wear`
   or `apps/mobile/targets/watch`. The contract is `docs/watch-sync.md`; the
@@ -94,7 +95,7 @@ in doubt, the rulebook wins.
   bug — flag its removal until upstream ships.
 - **Design tokens.** `DESIGN.md` (repo root) is the token source of truth;
   `apps/mobile/src/theme/colors.ts` is the canonical palette, mirrored by watchOS
-  Court (`targets/watch/Theme.swift`) and Wear `CourtColors`. Flag hard-coded
+  Court (`targets/watch/Theme.swift`); Wear takes its roles from the phone via `palette.roles`. Flag hard-coded
   hexes that should reference the palette, and palette drift across the three
   platforms.
 - **Owner is hard-coded `"nico"`** throughout. Flag a stray `getOwner` call or a

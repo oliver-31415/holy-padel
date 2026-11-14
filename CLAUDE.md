@@ -25,7 +25,7 @@ the **leading source of truth** for all scoring behaviour — when in doubt, the
 
 ## Conventions (do these)
 
-- **TypeScript strict**, `exactOptionalPropertyTypes` on — omit optional keys, never set them to `undefined` (see the `courtField` spread pattern in `build-state.ts`).
+- **TypeScript strict**, `exactOptionalPropertyTypes` on — omit optional keys, never set them to `undefined` (see the `paletteField` spread pattern in `build-state.ts`).
 - **Biome** at max strictness (`preset: "all"` + nursery). Run `pnpm lint`; auto-fix formatting with `pnpm exec biome check --write <file>`. `apps/mobile/targets` and `apps/mobile/modules` native dirs are excluded.
 - **Gitmoji micro-commits**, one logical change each. Branch off `main`; open a PR (main is protected — see below). Never commit/push unless asked.
 - Match the surrounding file's style, comment density, and idioms. App code imports via the `@/` alias (mirrored in `vitest.config.ts`).
@@ -77,14 +77,14 @@ Six workflows in `.github/workflows` (see the README's CI table). `main` is prot
   `docs/squash-scoring-spec.md`.
 - Watch questions → `docs/watch-sync.md` + `apps/mobile/src/watch` + the two watch apps.
 - "How does X render?" → `apps/mobile/src/app` (expo-router screens) + `src/lib/format.ts` (all display strings).
-- Design/colors/typography → **[DESIGN.md](DESIGN.md)** (the token source of truth) + `apps/mobile/src/theme/colors.ts`.
+- Design/colors/typography → **[DESIGN.md](DESIGN.md)** (Material 3 Expressive; the token source of truth) + `apps/mobile/src/theme/colors.ts` + the components in `apps/mobile/src/components/ui.tsx` and `controls.tsx`.
 
 ## Agentic workspace (`.claude/`)
 
 This repo ships a committed agentic workspace. Prefer these over ad-hoc work — they encode the conventions above.
 
 - **Subagents** (`.claude/agents/`) — delegate to these; they auto-trigger by task:
-  `scoring-guardian` (FIP engine + spec + vectors), `engine-port-parity` (Swift/Kotlin ports vs `golden.json`), `watch-sync-specialist` (phone↔watch contract + native), `design-system-keeper` (Court Bold tokens across platforms), `verify-gate` (pre-merge checks + required-vs-native CI), `holy-padel-reviewer` (repo-tuned review).
+  `scoring-guardian` (FIP engine + spec + vectors), `engine-port-parity` (Swift/Kotlin ports vs `golden.json`), `watch-sync-specialist` (phone↔watch contract + native), `design-system-keeper` (Material 3 Expressive roles + the watch palettes), `verify-gate` (pre-merge checks + required-vs-native CI), `holy-padel-reviewer` (repo-tuned review).
 - **Slash commands** (`.claude/commands/`) — `/verify` (install → check → e2e:changed), `/regen-vectors` (regen `golden.json` + port tests), `/ship-pr` (gitmoji micro-commits → PR → manual merge after native jobs green), `/new-native-module` (the Expo-module triad).
 - **Skills** (`.claude/skills/`) — `ios-build-run` (dev-client build/run + fast watch rebuild), `gitnexus/*` (code-intelligence CLI).
 - **Path rules** (`.claude/rules/`) — load automatically when you open matching files: `scoring`, `watch`, `design`, `native-modules`, `typescript`.

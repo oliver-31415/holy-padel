@@ -1,50 +1,48 @@
----
-paths:
-  - "apps/mobile/src/theme/**"
-  - "apps/mobile/src/components/**"
-  - "apps/mobile/targets/watch/*.swift"
-  - "apps/watch-wear/app/src/main/java/com/holypadel/wear/ui/**"
----
+# Design system — Material 3 Expressive
 
-# Design system — Court Bold
-
-`DESIGN.md` at the repo root is the token source of truth: Court Bold — Anton
-display + Archivo body, signal orange `#FF6B35` on ink `#0E1116` over cream `#F1F0EA`.
-When a value is in doubt, `DESIGN.md` wins.
+`DESIGN.md` at the repo root is the source of truth for the phone app: Material 3
+Expressive — colour roles generated from the user's highlight and Team B picks,
+Google Sans Flex, large round tonal shapes, no shadows. When a value is in doubt,
+`DESIGN.md` wins.
 
 ## Where tokens live
 
-- **`apps/mobile/src/theme/colors.ts` is the canonical palette.** All app colour
-  comes from here (the `colors` const and the `inkAlpha` / `whiteAlpha` /
-  `accentAlpha` helpers). Don't hard-code hex in components.
-- The watches **mirror** this palette — they don't own colours:
-  - watchOS: `Court` in `apps/mobile/targets/watch/Theme.swift`.
-  - Wear OS: `CourtColors`.
-- Adding or changing a token is a three-place edit: `DESIGN.md` (the token),
-  `colors.ts` (canonical), then mirror it on both watches. Never introduce a new
-  colour by hard-coding it in one surface.
-
-## Anton (Display) — never tighten the line height
-
-Anton has tall round glyphs that clip when the line box is short — a tightly-led
-`0` reads as `U`. **Leave `lineHeight` unset on any Anton / Display text**, or set
-it to at least ~1.3× the `fontSize`. This applies to every score numeral, set
-count, and display heading across phone and both watches.
+- **`apps/mobile/src/theme/colors.ts` is canonical.** `buildScheme()` derives
+  every Material role from the two seed colours; components read `colors.*`
+  (and `onSurfaceAlpha` / `primaryAlpha` / `winRgb` / `lossRgb`). Don't
+  hard-code hex in components.
+- Components come from `apps/mobile/src/components/ui.tsx` and `controls.tsx` (`Button`,
+  `IconButton`, `Chip`, `Card`, `ListItem`, `ProgressBar`, `TextField`, …),
+  `sheet.tsx` and `segmented-row.tsx`. Reach for these before hand-rolling an
+  `XStack` button.
+- Icons are Material Symbols Rounded via `<Icon name="…" />`; add a glyph's path
+  to `components/icon-paths.ts`.
+- Wear OS is Material 3 Expressive too; its colour roles are computed on the
+  phone (`watchRoles()` in `colors.ts`) and sent as `palette.roles`, then read
+  through `WatchColors` in `apps/watch-wear/.../ui/Colors.kt`. The Apple Watch
+  (`Court` in `apps/mobile/targets/watch/Theme.swift`) keeps its own near-black
+  look and takes only the two seed colours.
 
 ## Colour intent
 
-- **Orange is reserved for signal only** — serve indicator, primary CTA, the live /
-  active accent. It is not a decorative fill. Ink and cream carry the layout;
-  orange marks the one thing that matters right now.
-- **Teams read by colour**: Team A is the accent-on-ink; Team B is `teamB`
-  (default `#8B7CFF` violet). Both are user-selectable in Settings, so always
-  read them from `colors` / `accentAlpha` / `accentRgb` / `teamBRgb` — never
-  hard-code the default hex. Keep the pairing consistent wherever both teams appear.
-- Use `danger` for destructive actions only.
+- **One vivid surface per screen**: `primaryContainer` marks the thing that
+  matters now (live card, serving team, wins). `primary` is the filled button
+  and active text. Tonal fills are `secondaryContainer`.
+- **Always pair a container with its own on-colour** so contrast holds for
+  every highlight pick in light and dark.
+- **Teams read by colour**: Team A is the primary pair, Team B the tertiary
+  pair. Both seeds are user-selectable — never hard-code the default hex.
+- Muted text is `onSurfaceVariant`, not `onSurface` at an opacity.
+- Use `error` for destructive actions only.
 
-## Cross-surface
+## Type and copy
 
-Any visual change that should be uniform (a new accent, a spacing scale, a team
-colour tweak) must land in `DESIGN.md` + `colors.ts` and be mirrored on watchOS
-`Court` and Wear `CourtColors` in the same logical change — don't let the three
-surfaces drift.
+Google Sans Flex throughout: `Display` (bold) for numerals and headlines, `Body`,
+`SectionTitle`, `Label`. Copy is **sentence case** — no all-caps labels, no wide
+tracking.
+
+## Shape
+
+Buttons are fully round and tighten on press; selection changes shape (round vs
+soft-square); cards are 28, hero cards 36, chips 8. Grouped lists use
+`groupCorners`. No shadows — depth is tonal.

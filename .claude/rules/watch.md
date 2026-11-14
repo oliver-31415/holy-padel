@@ -33,7 +33,7 @@ Match duration excludes paused breaks via `playedMs()` in `src/lib/format.ts`.
 ## Building the payload
 
 Strict + `exactOptionalPropertyTypes`: **omit** optional keys, never set them to
-`undefined`. Follow the `courtField` spread pattern already in `build-state.ts`.
+`undefined`. Follow the `paletteField` spread pattern already in `build-state.ts`.
 
 ## Native CI is not required — merge manually
 

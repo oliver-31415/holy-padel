@@ -11,15 +11,13 @@ TypeScript **strict** with `exactOptionalPropertyTypes` on across the monorepo.
 ## Optional keys: omit, never `undefined`
 
 Under `exactOptionalPropertyTypes` an optional key is **absent**, not set to
-`undefined`. Omit it. The `courtField` spread pattern in
+`undefined`. Omit it. The `paletteField` spread pattern in
 `apps/mobile/src/watch/build-state.ts` is the reference:
 
 ```ts
-function courtField(match: MatchSummary): { court?: string } {
-  // exactOptionalPropertyTypes: omit the key rather than set it to undefined.
-  return match.court === undefined ? {} : { court: match.court };
-}
-// …spread it: { ...base, ...courtField(match) }
+// exactOptionalPropertyTypes: omit the key rather than set it to undefined.
+const paletteField = palette === undefined ? {} : { palette };
+// …spread it: { ...idleState(last, ownerId), ...paletteField }
 ```
 
 ## Imports
