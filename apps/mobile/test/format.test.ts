@@ -6,6 +6,7 @@ import {
   durationLabel,
   finalScoreLine,
   fullDayLabel,
+  gameCaption,
   liveScoreLine,
   matchContext,
   megabytesLabel,
@@ -13,6 +14,9 @@ import {
   pairLabel,
   recordLabel,
   resultLabel,
+  setInPlayLabel,
+  setName,
+  setTitle,
   timeLabel,
 } from "../src/lib/format.ts";
 
@@ -28,16 +32,16 @@ describe("format helpers", () => {
     expect(pairInitials(["marta", "leo"])).toBe("M&L");
   });
 
-  it("labels days as TODAY, weekday, or date", () => {
-    expect(dayLabel(NOW - HOUR, NOW)).toBe("TODAY");
-    expect(dayLabel(NOW - DAY, NOW)).toBe("TUE");
-    expect(dayLabel(NOW - 3 * DAY, NOW)).toBe("SUN");
-    expect(dayLabel(NOW - 10 * DAY, NOW)).toBe("JUN 21");
+  it("labels days as Today, weekday, or date", () => {
+    expect(dayLabel(NOW - HOUR, NOW)).toBe("Today");
+    expect(dayLabel(NOW - DAY, NOW)).toBe("Tue");
+    expect(dayLabel(NOW - 3 * DAY, NOW)).toBe("Sun");
+    expect(dayLabel(NOW - 10 * DAY, NOW)).toBe("Jun 21");
   });
 
   it("formats times, full dates and durations", () => {
     expect(timeLabel(new Date(2026, 6, 1, 18, 5).getTime())).toBe("18:05");
-    expect(fullDayLabel(new Date(2026, 5, 30, 18, 32).getTime())).toBe("TUE JUN 30");
+    expect(fullDayLabel(new Date(2026, 5, 30, 18, 32).getTime())).toBe("Tue, Jun 30");
     expect(durationLabel(47 * 60_000)).toBe("0:47");
     expect(durationLabel(83 * 60_000)).toBe("1:23");
     expect(durationLabel(0)).toBe("0:00");
@@ -171,9 +175,9 @@ describe("pickleball score lines", () => {
 });
 
 describe("draw wording", () => {
-  it("reads a win as DEF. and a level early stop as DREW WITH", () => {
-    expect(resultLabel("Cameron", false)).toBe("DEF. CAMERON");
-    expect(resultLabel("Cameron", true)).toBe("DREW WITH CAMERON");
+  it("reads a win as def. and a level early stop as drew with", () => {
+    expect(resultLabel("Cameron", false)).toBe("def. Cameron");
+    expect(resultLabel("Cameron", true)).toBe("drew with Cameron");
   });
 
   it("omits the draw count from a record with no level stops", () => {
@@ -182,5 +186,51 @@ describe("draw wording", () => {
 
   it("appends the draw count once there are level early stops", () => {
     expect(recordLabel({ won: 3, lost: 2, drew: 1 })).toBe("3–2–1");
+  });
+});
+
+describe("naming sets and games", () => {
+  const padel = (bestOf: 1 | 3): MatchConfig => ({
+    bestOf,
+    deuceMode: "advantage",
+    thirdSet: "superTieBreak",
+    firstServe: "A",
+  });
+  const squash = (bestOf: 1 | 3): MatchConfig => ({
+    sport: "squash",
+    bestOf,
+    deuceMode: "advantage",
+    thirdSet: "fullSet",
+    squashMode: "par",
+    squashTarget: 11,
+    squashTiebreak: "winByTwo",
+    firstServe: "A",
+  });
+
+  it("numbers the sets of a match that has several", () => {
+    expect(setTitle(padel(3), 2)).toBe("Set 2");
+    expect(setName(padel(3), 2)).toBe("set 2");
+    expect(gameCaption(padel(3), 2, 5)).toBe("Set 2 · game 5");
+  });
+
+  it("never says set 1 when one set is all there was", () => {
+    expect(setTitle(padel(1), 1)).toBe("Set");
+    expect(setName(padel(1), 1)).toBe("the set");
+    expect(gameCaption(padel(1), 1, 5)).toBe("Game 5");
+  });
+
+  it("counts squash in games, and names nothing in a one-game match", () => {
+    expect(setTitle(squash(3), 2)).toBe("Game 2");
+    expect(setName(squash(3), 2)).toBe("game 2");
+    expect(gameCaption(squash(3), 2, 1)).toBe("Game 2");
+    expect(setTitle(squash(1), 1)).toBe("Game");
+    expect(setName(squash(1), 1)).toBe("the game");
+    expect(gameCaption(squash(1), 1, 1)).toBe("");
+  });
+
+  it("labels the set in play in sentence case, or not at all in a one-set match", () => {
+    expect(setInPlayLabel(computeMatch(padel(3), []))).toBe("Set 1");
+    expect(setInPlayLabel(computeMatch(padel(1), []))).toBe("");
+    expect(setInPlayLabel(computeMatch(squash(3), []))).toBe("Game 1");
   });
 });

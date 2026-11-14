@@ -147,7 +147,6 @@ function match(
       A: [displayName(a[0]), a[1] === undefined ? undefined : displayName(a[1])],
       B: [displayName(b[0]), b[1] === undefined ? undefined : displayName(b[1])],
     },
-    court: undefined,
     location: undefined,
     startedAt: 0,
     endedAt: 1,

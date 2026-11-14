@@ -1,21 +1,27 @@
 import type { MatchSummary, NewMatchDefaults } from "@holy-padel/db";
-import type { DeuceMode, MatchSnapshot, TeamId, TeamValues } from "@holy-padel/scoring";
+import type {
+  DeuceMode,
+  MatchConfig,
+  MatchSnapshot,
+  TeamId,
+  TeamValues,
+} from "@holy-padel/scoring";
 
 const DAY_MS = 86_400_000;
-const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MONTHS = [
-  "JAN",
-  "FEB",
-  "MAR",
-  "APR",
-  "MAY",
-  "JUN",
-  "JUL",
-  "AUG",
-  "SEP",
-  "OCT",
-  "NOV",
-  "DEC",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ] as const;
 
 /**
@@ -57,13 +63,13 @@ export function ownerTeamOf(match: MatchSummary, ownerId: string): TeamId {
   return match.players.B.includes(ownerId) ? "B" : "A";
 }
 
-/** "TODAY", "TUE", or "JUN 24" — the design's match-row date style. */
+/** "Today", "Tue", or "Jun 24" — the match-row date style. */
 export function dayLabel(timestamp: number, now: number): string {
   const date = new Date(timestamp);
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
   if (timestamp >= startOfToday.getTime()) {
-    return "TODAY";
+    return "Today";
   }
   const daysAgo = Math.ceil((startOfToday.getTime() - timestamp) / DAY_MS);
   if (daysAgo <= 6) {
@@ -72,12 +78,12 @@ export function dayLabel(timestamp: number, now: number): string {
   return `${MONTHS[date.getMonth()] ?? ""} ${String(date.getDate())}`;
 }
 
-/** "TUE JUN 30" — the overview header's date style. */
+/** "Tue, Jun 30" — the overview header's date style. */
 export function fullDayLabel(timestamp: number): string {
   const date = new Date(timestamp);
   const weekday = WEEKDAYS[date.getDay()] ?? "";
   const month = MONTHS[date.getMonth()] ?? "";
-  return `${weekday} ${month} ${String(date.getDate())}`;
+  return `${weekday}, ${month} ${String(date.getDate())}`;
 }
 
 /** "3–2" for a record, "3–2–1" once there are level early stops to show. */
@@ -90,9 +96,9 @@ export function recordLabel(record: {
   return record.drew === 0 ? base : `${base}–${String(record.drew)}`;
 }
 
-/** The hero's line under the headline team: "DEF. CAMERON", or "DREW WITH CAMERON" for a level early stop. */
+/** The hero's line under the headline team: "def. Cameron", or "drew with Cameron" for a level early stop. */
 export function resultLabel(opponent: string, drew: boolean): string {
-  return `${drew ? "DREW WITH" : "DEF."} ${opponent.toUpperCase()}`;
+  return `${drew ? "drew with" : "def."} ${opponent}`;
 }
 
 /** "18:32" */
@@ -128,18 +134,12 @@ export function playedMs(
   return Math.max(0, at - match.startedAt - match.pausedMs - openPause);
 }
 
-/** "TODAY · 18:32 · COURT 4" or "TUE · CLUB PADEL NORTE". */
+/** "Today · 18:32 · Club Padel Norte" or "Tue · Club Padel Norte". */
 export function matchMetaLabel(match: MatchSummary, now: number): string {
   const day = dayLabel(match.startedAt, now);
-  const place = match.court ?? match.location;
   const parts =
-    day === "TODAY"
-      ? [day, timeLabel(match.startedAt), match.court ?? match.location]
-      : [day, place];
-  return parts
-    .filter((part): part is string => part !== undefined)
-    .map((part) => part.toUpperCase())
-    .join(" · ");
+    day === "Today" ? [day, timeLabel(match.startedAt), match.location] : [day, match.location];
+  return parts.filter((part): part is string => part !== undefined).join(" · ");
 }
 
 export function currentSetScore(snapshot: MatchSnapshot): string {
@@ -229,6 +229,56 @@ export function matchContext(snapshot: MatchSnapshot): {
     label: several ? `SET ${String(snapshot.setNumber)}` : "",
     score: [...sets, games].join(" · "),
   };
+}
+
+/** Squash and pickleball count a match in games; padel counts it in sets. */
+function countsInGames(config: MatchConfig): boolean {
+  return config.sport === "squash" || config.sport === "pickleball";
+}
+
+/**
+ * The set (or game) in play for the phone's live surfaces: "Set 2", "Game 2",
+ * "Super tie-break". Empty in a one-set or one-game match — there is nothing
+ * to number, exactly as on the watches (`matchContext`).
+ */
+export function setInPlayLabel(snapshot: MatchSnapshot): string {
+  const { label } = matchContext(snapshot);
+  if (label === "SUPER TB") {
+    return "Super tie-break";
+  }
+  return label.charAt(0) + label.slice(1).toLowerCase();
+}
+
+/**
+ * Heads one set (padel) or game (squash, pickleball) of a match: "Set 2",
+ * "Game 2". A match of a single set or game drops the number — "Set", "Game" —
+ * because "Set 1" implies there were others.
+ */
+export function setTitle(config: MatchConfig, setNumber: number): string {
+  const unit = countsInGames(config) ? "Game" : "Set";
+  return config.bestOf === 1 ? unit : `${unit} ${String(setNumber)}`;
+}
+
+/** `setTitle` for running text: "set 2", or "the set" when the match only has one. */
+export function setName(config: MatchConfig, setNumber: number): string {
+  const unit = countsInGames(config) ? "game" : "set";
+  return config.bestOf === 1 ? `the ${unit}` : `${unit} ${String(setNumber)}`;
+}
+
+/**
+ * Where one game sits in its match, for chart captions: "Set 2 · game 5" in
+ * padel, "Game 2" in squash and pickleball (whose games are their sets). A
+ * one-set padel match drops the set ("Game 5"); a one-game match has nothing
+ * to name and returns "".
+ */
+export function gameCaption(config: MatchConfig, setNumber: number, gameNumber: number): string {
+  const several = config.bestOf > 1;
+  if (countsInGames(config)) {
+    return several ? `Game ${String(setNumber)}` : "";
+  }
+  return several
+    ? `Set ${String(setNumber)} · game ${String(gameNumber)}`
+    : `Game ${String(gameNumber)}`;
 }
 
 /** "SET 2" / "SUPER TB" / "GAME 1" — the set in play, in the watch header's compact style. */

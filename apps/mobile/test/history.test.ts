@@ -15,7 +15,6 @@ function finishedMatch(id: string, startedAt: number, won: boolean): MatchSummar
     config: { bestOf: 1, deuceMode: "advantage", thirdSet: "fullSet", firstServe: "A" },
     players: { A: [OWNER, undefined], B: [OPPONENT, undefined] },
     names: { A: ["Nico", undefined], B: ["Marta", undefined] },
-    court: undefined,
     location: undefined,
     startedAt,
     endedAt: startedAt + 3_600_000,
