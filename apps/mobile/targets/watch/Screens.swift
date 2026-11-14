@@ -95,6 +95,15 @@ private struct ScoreTab: View {
     var body: some View {
         VStack(spacing: 4) {
             header
+            // The call that matters right now — game point, set point, deuce — as the
+            // phone words it. Hidden while paused and while the choice buttons are up.
+            if !state.status.isEmpty && !state.paused && !state.choicePending {
+                Text(state.status)
+                    .font(.system(size: 11, weight: .heavy))
+                    .tracking(0.8)
+                    .foregroundStyle(Court.accent)
+                    .lineLimit(1)
+            }
             if state.choicePending {
                 ChoiceButtons(onChoose: onSetChoice)
             } else {

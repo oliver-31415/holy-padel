@@ -37,7 +37,6 @@ struct MatchState: Decodable {
     var v: Int = 1
     var phase: Phase = .idle
     var clock: String = ""
-    var court: String?
     var setLabel: String = ""
     var teamA = TeamState()
     var teamB = TeamState()
@@ -66,7 +65,7 @@ struct MatchState: Decodable {
 
 extension MatchState {
     private enum CodingKeys: String, CodingKey {
-        case v, phase, clock, court, setLabel, teamA, teamB, pointA, pointB, games, status,
+        case v, phase, clock, setLabel, teamA, teamB, pointA, pointB, games, status,
             paused, choicePending, startedAt, clockBase, won, last, palette
     }
 
@@ -78,7 +77,6 @@ extension MatchState {
         v = try c.decodeIfPresent(Int.self, forKey: .v) ?? 1
         phase = try c.decodeIfPresent(Phase.self, forKey: .phase) ?? .idle
         clock = try c.decodeIfPresent(String.self, forKey: .clock) ?? ""
-        court = try c.decodeIfPresent(String.self, forKey: .court)
         setLabel = try c.decodeIfPresent(String.self, forKey: .setLabel) ?? ""
         teamA = try c.decodeIfPresent(TeamState.self, forKey: .teamA) ?? TeamState()
         teamB = try c.decodeIfPresent(TeamState.self, forKey: .teamB) ?? TeamState()
