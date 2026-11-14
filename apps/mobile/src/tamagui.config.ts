@@ -4,59 +4,53 @@ import { createFont, createTamagui } from "tamagui";
 import { colors } from "./theme/colors.ts";
 
 const HEADING_SIZES = {
-  1: 11,
-  2: 13,
-  3: 15,
-  4: 16,
-  5: 18,
-  6: 21,
-  7: 24,
-  8: 30,
-  9: 34,
-  10: 40,
-  11: 58,
-  12: 76,
-  13: 112,
-  true: 16,
+  1: 22,
+  2: 24,
+  3: 28,
+  4: 32,
+  5: 36,
+  6: 45,
+  7: 57,
+  8: 72,
+  9: 96,
+  true: 28,
 } as const;
 
 const BODY_SIZES = {
-  1: 9,
-  2: 10,
-  3: 11,
-  4: 12,
-  5: 12.5,
-  6: 13,
-  7: 14,
-  8: 15,
-  9: 16,
-  10: 18,
-  true: 12.5,
+  1: 11,
+  2: 12,
+  3: 14,
+  4: 16,
+  5: 22,
+  true: 14,
 } as const;
 
-/** Anton — the condensed display face for numerals and headings. */
+// biome-ignore-start lint/style/useNamingConvention: Google Fonts registry names
+const FACE = {
+  400: { normal: "GoogleSansFlex_400Regular" },
+  500: { normal: "GoogleSansFlex_500Medium" },
+  600: { normal: "GoogleSansFlex_600SemiBold" },
+  700: { normal: "GoogleSansFlex_700Bold" },
+  800: { normal: "GoogleSansFlex_800ExtraBold" },
+} as const;
+// biome-ignore-end lint/style/useNamingConvention: Google Fonts registry names
+
+const WEIGHTS = { 4: "400", 5: "500", 6: "600", 7: "700", 8: "800" } as const;
+
+/** Google Sans Flex, emphasized — score numerals, display and headline text. */
 const headingFont = createFont({
-  family: "Anton_400Regular",
+  family: "GoogleSansFlex_700Bold",
   size: HEADING_SIZES,
-  weight: { 4: "400", true: "400" },
-  letterSpacing: { 4: 0.5, true: 0.5 },
-  face: {
-    400: { normal: "Anton_400Regular" },
-  },
+  weight: { ...WEIGHTS, true: "700" },
+  face: FACE,
 });
 
-/** Archivo — UI text at weights 400-800. */
+/** Google Sans Flex — titles, body and labels at weights 400-700. */
 const bodyFont = createFont({
-  family: "Archivo_400Regular",
+  family: "GoogleSansFlex_400Regular",
   size: BODY_SIZES,
-  weight: { 4: "400", 5: "500", 6: "600", 7: "700", 8: "800", true: "600" },
-  face: {
-    400: { normal: "Archivo_400Regular" },
-    500: { normal: "Archivo_500Medium" },
-    600: { normal: "Archivo_600SemiBold" },
-    700: { normal: "Archivo_700Bold" },
-    800: { normal: "Archivo_800ExtraBold" },
-  },
+  weight: { ...WEIGHTS, true: "400" },
+  face: FACE,
 });
 
 export const tamaguiConfig = createTamagui({

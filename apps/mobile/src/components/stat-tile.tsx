@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { View } from "tamagui";
-import { Body, Display } from "@/components/ui.tsx";
-import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { Display, Label } from "@/components/ui.tsx";
+import { colors } from "@/theme/colors.ts";
 
-/** A profile stat tile: ink, accent or white with the value in Anton. */
+/** A profile stat tile: a tonal container with an emphasized value. */
 export function StatTile({
   value,
   label,
@@ -11,33 +11,26 @@ export function StatTile({
 }: {
   readonly value: string;
   readonly label: string;
-  readonly variant: "ink" | "accent" | "white";
+  readonly variant: "surface" | "primary" | "tonal";
 }): ReactNode {
-  // The tile surfaces are theme tokens (dark tile, light tile), so the
-  // hierarchy holds in both palettes: the ink tile stays the darkest surface,
-  // the white tile the lightest. Accent is the accent in both modes.
   const palette = {
-    ink: { background: colors.tileInk, value: colors.white, label: whiteAlpha(0.5) },
-    accent: { background: colors.accent, value: colors.onAccent, label: colors.onAccent },
-    white: { background: colors.tileWhite, value: colors.text, label: textAlpha(0.45) },
+    surface: { background: colors.card, content: colors.onSurface },
+    primary: { background: colors.primaryContainer, content: colors.onPrimaryContainer },
+    tonal: { background: colors.secondaryContainer, content: colors.onSecondaryContainer },
   }[variant];
-  const { background, value: valueColor, label: labelColor } = palette;
   return (
     <View
       flex={1}
-      backgroundColor={background}
-      borderRadius={16}
-      paddingTop={13}
-      paddingBottom={11}
+      backgroundColor={palette.background}
+      borderRadius={28}
+      paddingVertical={20}
       alignItems="center"
-      boxShadow={variant === "white" ? "0 2px 10px rgba(14, 17, 22, 0.05)" : "unset"}
+      gap={2}
     >
-      <Display fontSize={24} color={valueColor}>
+      <Display fontSize={28} color={palette.content}>
         {value}
       </Display>
-      <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={labelColor} marginTop={2}>
-        {label}
-      </Body>
+      <Label color={palette.content}>{label}</Label>
     </View>
   );
 }

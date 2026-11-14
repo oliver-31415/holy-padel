@@ -9,9 +9,9 @@ import { Body, Card } from "@/components/ui.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
 import type { Clutch, Turnaround } from "@/lib/clutch.ts";
 import { matchClutch, matchTurnarounds } from "@/lib/clutch.ts";
-import { ownerTeamOf } from "@/lib/format.ts";
+import { ownerTeamOf, setName } from "@/lib/format.ts";
 import { rallyLengths, rallyMoments } from "@/lib/rallies.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 interface Moment {
   readonly key: string;
@@ -19,10 +19,10 @@ interface Moment {
   readonly good: boolean;
 }
 
-function turnaroundText(turnaround: Turnaround, unit: string): string {
+/** `where` names the set or game — "set 2", or "the set" in a one-set match. */
+function turnaroundText(turnaround: Turnaround, where: string): string {
   const own = String(turnaround.at.own);
   const other = String(turnaround.at.other);
-  const where = `${unit} ${String(turnaround.setNumber)}`;
   return turnaround.cameBack
     ? `Came back from ${own}–${other} down to win ${where}`
     : `Let a ${own}–${other} lead slip in ${where}`;
@@ -88,8 +88,6 @@ export function KeyMomentsCard({
 }): ReactNode {
   const owner = useDbQuery(getOwner);
   const team = ownerTeamOf(match, owner?.id ?? "nico");
-  const sport = match.config.sport ?? "padel";
-  const unit = sport === "padel" ? "set" : "game";
   const decidingName = match.config.deuceMode === "starPoint" ? "star points" : "golden points";
   const lengths = useMemo(
     () => rallyLengths(match.config, events, team),
@@ -98,7 +96,7 @@ export function KeyMomentsCard({
   const moments: Moment[] = [
     ...matchTurnarounds(match.config, events, team).map((turnaround) => ({
       key: `turn-${String(turnaround.setNumber)}`,
-      text: turnaroundText(turnaround, unit),
+      text: turnaroundText(turnaround, setName(match.config, turnaround.setNumber)),
       good: turnaround.cameBack,
     })),
     ...clutchMoments(matchClutch(match.config, events, team), decidingName),
@@ -108,24 +106,18 @@ export function KeyMomentsCard({
     return null;
   }
   return (
-    <Card
-      borderRadius={20}
-      paddingVertical={15}
-      paddingHorizontal={17}
-      gap={12}
-      testID="key-moments"
-    >
-      <CardHeader title="KEY MOMENTS" />
-      <YStack gap={10}>
+    <Card padding={20} gap={16} testID="key-moments">
+      <CardHeader title="Key moments" />
+      <YStack gap={12}>
         {moments.map((moment) => (
-          <XStack key={moment.key} alignItems="center" gap={10}>
+          <XStack key={moment.key} alignItems="center" gap={12}>
             <View
-              width={7}
-              height={7}
+              width={8}
+              height={8}
               borderRadius={999}
-              backgroundColor={moment.good ? colors.accent : textAlpha(0.25)}
+              backgroundColor={moment.good ? colors.primary : colors.outlineVariant}
             />
-            <Body flex={1} fontSize={13.5} fontWeight="700">
+            <Body flex={1} fontSize={14}>
               {moment.text}
             </Body>
           </XStack>

@@ -17,11 +17,22 @@ import { Platform, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { ColorSettings } from "@/components/color-settings.tsx";
-import { ChevronRight, Heart } from "@/components/icons.tsx";
+import { Button, IconButton, ListItem } from "@/components/controls.tsx";
+import { Icon } from "@/components/icons.tsx";
 import { NewPlayerRow } from "@/components/new-player-row.tsx";
 import { SegmentedRow } from "@/components/segmented-row.tsx";
 import { StatTile } from "@/components/stat-tile.tsx";
-import { Avatar, Body, Card, Display, Overline, Pill, ResultBadge } from "@/components/ui.tsx";
+import {
+  Avatar,
+  Body,
+  Card,
+  Display,
+  Divider,
+  groupCorners,
+  Label,
+  ResultBadge,
+  SectionTitle,
+} from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import {
   getHealthStatus,
@@ -29,14 +40,14 @@ import {
   requestHealthAuthorization,
 } from "@/health/health-log.ts";
 import { durationLabel, megabytesLabel, recordLabel } from "@/lib/format.ts";
-import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 import { loadThemeSetting, useSetThemeSetting } from "@/theme/theme.tsx";
 
 const HEALTH_PLATFORM = Platform.OS === "android" ? "Health Connect" : "Apple Health";
 
 /** Fixed right-aligned columns in the by-sport table. */
-const COLUMN_RECORD = 42;
-const COLUMN_POINTS = 82;
+const COLUMN_RECORD = 48;
+const COLUMN_POINTS = 96;
 
 /**
  * Opt-in prompt to connect the platform health store. Rendered only when the
@@ -86,108 +97,62 @@ function HealthBanner(): ReactNode {
   };
 
   return (
-    <Card
-      flexDirection="row"
-      alignItems="center"
-      gap={13}
-      borderRadius={18}
-      paddingVertical={14}
-      paddingHorizontal={16}
-    >
+    <Card flexDirection="row" alignItems="center" gap={16} padding={16}>
       <View
         width={40}
         height={40}
         borderRadius={20}
-        backgroundColor={accentAlpha(0.22)}
+        backgroundColor={colors.secondaryContainer}
         alignItems="center"
         justifyContent="center"
       >
-        <Heart size={19} color={colors.accentOnCard} strokeWidth={2.4} />
+        <Icon name="heart" color={colors.onSecondaryContainer} />
       </View>
       <YStack flex={1} gap={2}>
-        <Body fontSize={14.5} fontWeight="800">
+        <Body fontSize={16} fontWeight="500">
           {`Connect ${HEALTH_PLATFORM}`}
         </Body>
-        <Body fontSize={11.5} fontWeight="600" color={textAlpha(0.45)}>
+        <Label lineHeight={16}>
           {denied
             ? "Re-enable workout access in Settings — optional"
             : "Save your matches as workouts — optional"}
-        </Body>
+        </Label>
         {stalled && !denied ? (
-          <Body fontSize={10.5} fontWeight="600" color={textAlpha(0.4)}>
+          <Label lineHeight={16}>
             No prompt appeared? Open Health Connect, allow Holy Padel to write workouts, then try
             again.
-          </Body>
+          </Label>
         ) : null}
       </YStack>
       {denied ? null : (
-        <Pill
-          backgroundColor={colors.tileInk}
-          paddingVertical={9}
-          paddingHorizontal={15}
-          pressStyle={{ opacity: 0.7 }}
+        <Button
+          label="Connect"
+          variant="tonal"
+          size="sm"
           opacity={busy ? 0.6 : 1}
-          role="button"
           onPress={connect}
-        >
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={colors.accent}>
-            CONNECT
-          </Body>
-        </Pill>
+        />
       )}
     </Card>
   );
 }
 
-/** Hairline between grouped rows inside a card. */
-function Rule(): ReactNode {
-  return <View height={1} backgroundColor={textAlpha(0.08)} />;
-}
-
 /** A compact unboxed secondary stat (streak, best run, time). */
 function MiniStat({ value, label }: { readonly value: string; readonly label: string }): ReactNode {
   return (
-    <YStack flex={1} alignItems="center" gap={3}>
-      <Display fontSize={18}>{value}</Display>
-      <Body fontSize={9} fontWeight="800" letterSpacing={1.4} color={textAlpha(0.4)}>
-        {label}
-      </Body>
+    <YStack flex={1} alignItems="center" gap={2}>
+      <Display fontSize={22}>{value}</Display>
+      <Label>{label}</Label>
     </YStack>
   );
 }
 
-/** A settings row: label, muted value, chevron. */
-function SettingsRow({
-  label,
-  value,
-  ariaLabel,
-  onPress,
-  testID,
-}: {
-  readonly label: string;
-  readonly value: string;
-  readonly ariaLabel?: string;
-  readonly onPress: () => void;
-  readonly testID?: string;
-}): ReactNode {
+/** The primary-coloured heading above a group of rows, as in system settings. */
+function GroupTitle({ title }: { readonly title: string }): ReactNode {
   return (
-    <XStack
-      alignItems="center"
-      gap={10}
-      pressStyle={{ opacity: 0.7 }}
-      role="button"
-      aria-label={ariaLabel ?? label}
-      onPress={onPress}
-      {...(testID === undefined ? {} : { testID })}
-    >
-      <Body fontSize={14.5} fontWeight="700">
-        {label}
-      </Body>
-      <Body flex={1} fontSize={11.5} fontWeight="600" color={textAlpha(0.45)} textAlign="right">
-        {value}
-      </Body>
-      <ChevronRight size={13} color={textAlpha(0.3)} />
-    </XStack>
+    <SectionTitle color={colors.primary} paddingHorizontal={8} paddingTop={12}>
+      {title}
+    </SectionTitle>
   );
 }
 
@@ -210,7 +175,7 @@ export default function ProfileScreen(): ReactNode {
   const winRate = `${String(stats.winRatePercent)}%`;
   const sideLabel = owner?.side === undefined ? "" : ` · plays ${owner.side} side`;
 
-  // The summary under the MATCH DEFAULTS row mirrors what the new-match
+  // The summary under the Match defaults row mirrors what the new-match
   // screen will prefill: saved defaults if set, else the last match's setup.
   const effective = resolveNewMatchDefaults({
     ...(savedDefaults === undefined ? {} : { saved: savedDefaults }),
@@ -235,51 +200,42 @@ export default function ProfileScreen(): ReactNode {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.screen }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
-        paddingTop: insets.top + 12,
+        paddingTop: insets.top + 8,
         paddingHorizontal: 16,
-        paddingBottom: insets.bottom + 90,
+        paddingBottom: insets.bottom + 96,
         gap: 12,
       }}
     >
-      <XStack alignItems="center" gap={14}>
-        <Avatar letter={owner?.name.charAt(0) ?? "N"} size={54} />
+      <XStack alignItems="center" gap={16} paddingTop={8}>
+        <Avatar letter={owner?.name.charAt(0) ?? "?"} size={72} shape="cookie" />
         <YStack flex={1}>
-          <Display fontSize={30}>{(owner?.name ?? "").toUpperCase()}</Display>
-          <Body fontSize={12} fontWeight="600" color={textAlpha(0.45)}>
-            {`${owner?.club ?? ""}${sideLabel}`}
-          </Body>
+          <Display fontSize={32}>{owner?.name ?? "Your profile"}</Display>
+          <Label>{`${owner?.club ?? ""}${sideLabel}`}</Label>
         </YStack>
-        <Pill
-          borderWidth={1}
-          borderColor={textAlpha(0.16)}
-          paddingVertical={8}
-          paddingHorizontal={13}
-          pressStyle={{ opacity: 0.6 }}
-          role="button"
-          aria-label="Edit profile"
+        <IconButton
+          icon="edit"
+          label="Edit profile"
+          variant="tonal"
+          size={48}
           onPress={() => {
             router.navigate("/edit-profile");
           }}
-        >
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.55)}>
-            EDIT
-          </Body>
-        </Pill>
+        />
       </XStack>
 
       <HealthBanner />
 
       <XStack gap={8}>
-        <StatTile value={String(stats.played)} label="PLAYED" variant="ink" />
-        <StatTile value={recordLabel(stats.record)} label="RECORD" variant="accent" />
-        <StatTile value={winRate} label="WIN RATE" variant="white" />
+        <StatTile value={String(stats.played)} label="Played" variant="surface" />
+        <StatTile value={recordLabel(stats.record)} label="Record" variant="primary" />
+        <StatTile value={winRate} label="Win rate" variant="tonal" />
       </XStack>
 
-      <Card borderRadius={20} paddingVertical={14} paddingHorizontal={17} gap={13}>
+      <Card padding={20} gap={16}>
         <XStack alignItems="center" justifyContent="space-between">
-          <Overline>FORM · LAST 5</Overline>
+          <SectionTitle>Form · last 5</SectionTitle>
           <XStack gap={6}>
             {stats.form.map((outcome, index) => (
               <ResultBadge
@@ -287,12 +243,12 @@ export default function ProfileScreen(): ReactNode {
                 key={index}
                 won={outcome === "won"}
                 drew={outcome === "drew"}
-                size={25}
+                size={28}
               />
             ))}
           </XStack>
         </XStack>
-        <Rule />
+        <Divider />
         <XStack alignItems="center">
           <MiniStat
             value={
@@ -300,62 +256,47 @@ export default function ProfileScreen(): ReactNode {
                 ? "—"
                 : `${stats.streak.kind === "won" ? "W" : "L"}${String(stats.streak.count)}`
             }
-            label="STREAK"
+            label="Streak"
           />
-          <MiniStat value={String(stats.bestWinStreak)} label="BEST RUN" />
-          <MiniStat value={durationLabel(stats.totalDurationMs)} label="TIME PLAYED" />
+          <MiniStat value={String(stats.bestWinStreak)} label="Best run" />
+          <MiniStat value={durationLabel(stats.totalDurationMs)} label="Time played" />
         </XStack>
       </Card>
 
-      <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={12}>
+      <Card padding={20} gap={12}>
         <XStack alignItems="center" justifyContent="space-between">
-          <Overline>BY SPORT</Overline>
-          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.4)}>
-            {`${String(points.for + points.against)} RALLIES`}
-          </Body>
+          <SectionTitle>By sport</SectionTitle>
+          <Label>{`${String(points.for + points.against)} rallies`}</Label>
         </XStack>
         {sportRows.length === 0 ? (
-          <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.4)}>
+          <Body fontSize={14} color={colors.onSurfaceVariant}>
             No finished matches yet.
           </Body>
         ) : (
           <>
             <XStack alignItems="flex-end">
               <View flex={1} />
-              <Body
-                fontSize={9}
-                fontWeight="800"
-                letterSpacing={1.2}
-                color={textAlpha(0.35)}
-                width={COLUMN_RECORD}
-                textAlign="right"
-              >
+              <Label width={COLUMN_RECORD} textAlign="right">
                 W–L
-              </Body>
-              <Body
-                fontSize={9}
-                fontWeight="800"
-                letterSpacing={1.2}
-                color={textAlpha(0.35)}
-                width={COLUMN_POINTS}
-                textAlign="right"
-              >
-                POINTS
-              </Body>
+              </Label>
+              <Label width={COLUMN_POINTS} textAlign="right">
+                Points
+              </Label>
             </XStack>
             {sportRows.map(([label, record, totals]) => (
               <XStack key={label} alignItems="center">
-                <Body flex={1} fontSize={14.5} fontWeight="700">
+                <Body flex={1} fontSize={16}>
                   {label}
                 </Body>
-                <Display fontSize={15} width={COLUMN_RECORD} textAlign="right">
+                <Display fontSize={16} width={COLUMN_RECORD} textAlign="right">
                   {recordLabel(record)}
                 </Display>
                 <Display
-                  fontSize={15}
+                  fontSize={16}
+                  fontWeight="500"
                   width={COLUMN_POINTS}
                   textAlign="right"
-                  color={textAlpha(0.55)}
+                  color={colors.onSurfaceVariant}
                 >
                   {`${String(totals.for)}–${String(totals.against)}`}
                 </Display>
@@ -365,78 +306,99 @@ export default function ProfileScreen(): ReactNode {
         )}
       </Card>
 
-      <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={11}>
-        <Overline>PLAYERS</Overline>
-        {players.map((entry) => (
+      <GroupTitle title="Players" />
+      <YStack gap={2}>
+        {players.map((entry, index) => (
           <XStack
             key={entry.id}
             alignItems="center"
-            gap={12}
-            pressStyle={{ opacity: 0.75 }}
+            gap={16}
+            minHeight={72}
+            paddingVertical={12}
+            paddingHorizontal={16}
+            backgroundColor={colors.card}
+            {...groupCorners(index, players.length + 1)}
+            pressStyle={{ opacity: 0.8 }}
             role="button"
             onPress={() => {
               router.push(`/player/${entry.id}`);
             }}
             testID={`player-${entry.id}`}
           >
-            <Avatar letter={entry.name.charAt(0)} size={30} />
-            <YStack flex={1}>
-              <Body fontSize={14.5} fontWeight="700">
-                {entry.name}
-              </Body>
-              <Body fontSize={10.5} fontWeight="600" color={textAlpha(0.4)}>
+            <Avatar letter={entry.name.charAt(0)} size={40} />
+            <YStack flex={1} gap={2}>
+              <Body fontSize={16}>{entry.name}</Body>
+              <Label>
                 {`${String(entry.matchesWithOwner)} ${
                   entry.matchesWithOwner === 1 ? "match" : "matches"
                 } with you`}
-              </Body>
+              </Label>
             </YStack>
-            <ChevronRight size={13} color={textAlpha(0.3)} />
+            <Icon name="chevronRight" color={colors.onSurfaceVariant} />
           </XStack>
         ))}
-        <NewPlayerRow
-          onCreate={(name) => {
-            const id = `player-${String(Date.now())}`;
-            mutate((driver) => {
-              createPlayer(driver, { id, name, createdAt: Date.now() });
-            });
-            router.push(`/player/${id}`);
-          }}
-        />
-      </Card>
+        <YStack
+          backgroundColor={colors.card}
+          minHeight={72}
+          justifyContent="center"
+          {...groupCorners(players.length, players.length + 1)}
+        >
+          <NewPlayerRow
+            onCreate={(name) => {
+              const id = `player-${String(Date.now())}`;
+              mutate((driver) => {
+                createPlayer(driver, { id, name, createdAt: Date.now() });
+              });
+              router.push(`/player/${id}`);
+            }}
+          />
+        </YStack>
+      </YStack>
 
-      <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={14}>
-        <Overline color={textAlpha(0.45)}>SETTINGS</Overline>
-        <SegmentedRow
-          label="Theme"
-          options={[
-            { value: "system", label: "System" },
-            { value: "light", label: "Light" },
-            { value: "dark", label: "Dark" },
-          ]}
-          value={themeSetting ?? "system"}
-          onChange={setThemeSetting}
-        />
-        <Rule />
-        <ColorSettings />
-        <Rule />
-        <SettingsRow
-          label="Match defaults"
-          value={defaultsSummary}
+      <GroupTitle title="Appearance" />
+      <YStack gap={2}>
+        <YStack backgroundColor={colors.card} padding={20} {...groupCorners(0, 2)}>
+          <SegmentedRow
+            label="Theme"
+            options={[
+              { value: "system", label: "System" },
+              { value: "light", label: "Light" },
+              { value: "dark", label: "Dark" },
+            ]}
+            value={themeSetting ?? "system"}
+            onChange={setThemeSetting}
+          />
+        </YStack>
+        <YStack backgroundColor={colors.card} padding={20} {...groupCorners(1, 2)}>
+          <ColorSettings />
+        </YStack>
+      </YStack>
+
+      <GroupTitle title="Settings" />
+      <YStack gap={2}>
+        <ListItem
+          icon="tune"
+          headline="Match defaults"
+          supporting={defaultsSummary}
           onPress={() => {
             router.navigate("/edit-defaults");
           }}
           testID="defaults-row"
+          index={0}
+          count={2}
         />
-        <Rule />
-        <SettingsRow
-          label="On this phone"
-          value={`SQLite · ${String(matchCount)} matches · ${megabytesLabel(sizeBytes)}`}
-          ariaLabel="Manage your data"
+        <ListItem
+          icon="storage"
+          headline="On this phone"
+          supporting={`SQLite · ${String(matchCount)} matches · ${megabytesLabel(sizeBytes)}`}
+          aria-label="Manage your data"
           onPress={() => {
             router.navigate("/data");
           }}
+          index={1}
+          count={2}
         />
-      </Card>
+      </YStack>
     </ScrollView>
   );
 }

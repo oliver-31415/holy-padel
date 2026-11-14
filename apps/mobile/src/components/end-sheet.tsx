@@ -1,15 +1,14 @@
 import type { ReactNode } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, XStack, YStack } from "tamagui";
-import { Square } from "@/components/icons.tsx";
+import { Button } from "@/components/controls.tsx";
+import { Sheet } from "@/components/sheet.tsx";
 import { Body, Display } from "@/components/ui.tsx";
-import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 /**
- * The END sheet — the crux of "don't lose the score". Court time runs out
+ * The End sheet — the crux of "don't lose the score". Court time runs out
  * mid-match all the time, so stopping must SAVE by default (whoever's ahead is
  * credited). Fully discarding stays available, one step down, and the whole
- * sheet is dismissable so END never traps you. In-app (not a native alert) so it
+ * sheet is dismissable so End never traps you. In-app (not a native alert) so it
  * looks the same everywhere and is directly tappable in tests.
  */
 export function EndSheet({
@@ -21,75 +20,28 @@ export function EndSheet({
   readonly onDiscard: () => void;
   readonly onCancel: () => void;
 }): ReactNode {
-  const insets = useSafeAreaInsets();
   return (
-    <YStack position="absolute" top={0} left={0} right={0} bottom={0}>
-      <View flex={1} backgroundColor="rgba(14, 17, 22, 0.55)" onPress={onCancel} />
-      <YStack
-        backgroundColor={colors.screen}
-        borderTopLeftRadius={26}
-        borderTopRightRadius={26}
-        paddingTop={22}
-        paddingHorizontal={20}
-        paddingBottom={insets.bottom + 18}
-        gap={11}
-      >
-        <Display fontSize={24}>END THE MATCH?</Display>
-        <Body fontSize={13} fontWeight="600" color={textAlpha(0.5)}>
-          Court time up? Stop and keep the score as it stands. Or discard the match entirely.
-        </Body>
-        <XStack
-          height={60}
-          marginTop={4}
-          backgroundColor={colors.accent}
-          borderRadius={17}
-          alignItems="center"
-          justifyContent="center"
-          gap={10}
-          boxShadow={`0 6px 18px ${accentAlpha(0.45)}`}
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          aria-label="Stop and save"
-          onPress={onStopSave}
-          testID="end-stop-save"
-        >
-          <Square size={17} color={colors.onAccent} />
-          <Display fontSize={18} letterSpacing={1.2} color={colors.onAccent}>
-            STOP & SAVE
-          </Display>
-        </XStack>
-        <XStack
-          height={54}
-          borderWidth={1}
-          borderColor={colors.danger}
-          borderRadius={15}
-          alignItems="center"
-          justifyContent="center"
-          pressStyle={{ opacity: 0.7 }}
-          role="button"
-          aria-label="Discard match"
-          onPress={onDiscard}
-          testID="end-discard"
-        >
-          <Body fontSize={14} fontWeight="800" letterSpacing={1.2} color={colors.danger}>
-            DISCARD MATCH
-          </Body>
-        </XStack>
-        <XStack
-          height={50}
-          alignItems="center"
-          justifyContent="center"
-          pressStyle={{ opacity: 0.6 }}
-          role="button"
-          aria-label="Keep playing"
-          onPress={onCancel}
-          testID="end-keep-playing"
-        >
-          <Body fontSize={13} fontWeight="700" letterSpacing={1.2} color={textAlpha(0.55)}>
-            KEEP PLAYING
-          </Body>
-        </XStack>
-      </YStack>
-    </YStack>
+    <Sheet onDismiss={onCancel} dismissLabel="Dismiss">
+      <Display fontSize={24}>End the match?</Display>
+      <Body fontSize={14} lineHeight={20} color={colors.onSurfaceVariant}>
+        Court time up? Stop and keep the score as it stands. Or discard the match entirely.
+      </Body>
+      <Button
+        label="Stop & save"
+        aria-label="Stop and save"
+        icon="stop"
+        marginTop={8}
+        onPress={onStopSave}
+        testID="end-stop-save"
+      />
+      <Button
+        label="Discard match"
+        variant="outlined"
+        borderColor={colors.error}
+        onPress={onDiscard}
+        testID="end-discard"
+      />
+      <Button label="Keep playing" variant="text" onPress={onCancel} testID="end-keep-playing" />
+    </Sheet>
   );
 }

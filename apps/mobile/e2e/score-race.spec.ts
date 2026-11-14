@@ -42,9 +42,9 @@ test.describe("score race scrub", () => {
     await page.mouse.move(box.x + box.width / 2, y, { steps: 12 });
     await expect(readout).toBeVisible();
     await expect(page.getByText(HINT)).toHaveCount(0);
-    await expect(readout.getByText("GAME", { exact: true })).toBeVisible();
+    await expect(readout.getByText("Game", { exact: true })).toBeVisible();
     // Heart rate is in the match, so the BPM cell is always there (it is never dropped).
-    await expect(readout.getByText("BPM", { exact: true })).toBeVisible();
+    await expect(readout.getByText("bpm", { exact: true })).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/scrub-mid.png` });
     const midText = await readout.textContent();
     if (midText === null) {

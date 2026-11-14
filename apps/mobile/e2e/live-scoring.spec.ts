@@ -22,7 +22,7 @@ test.describe("live scoring (design 1a)", () => {
     await expect(statusPill(page)).toHaveText("GAME POINT — NICO & JAVI");
     // Game 18 of the match: Marta & Leo serve.
     await expect(page.getByTestId("point-B-serve-on")).toBeVisible();
-    await expect(page.getByText("COURT 4 · SET 2")).toBeVisible();
+    await expect(page.getByText("Set 2", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Synced — 2 watches connected")).toBeVisible();
   });
 

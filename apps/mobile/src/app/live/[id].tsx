@@ -27,10 +27,10 @@ import {
   TeamCard,
 } from "@/components/live-parts.tsx";
 import { MatchWon } from "@/components/match-won.tsx";
-import { Display, Pill } from "@/components/ui.tsx";
+import { Body, Pill } from "@/components/ui.tsx";
 import { SavedIndicator, WatchSyncLine } from "@/components/watch-status.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
-import { durationLabel, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
+import { durationLabel, playedMs, pointDisplay, setInPlayLabel, teamNames } from "@/lib/format.ts";
 import { scoreHaptic, undoHaptic } from "@/lib/haptics.ts";
 import {
   closeLiveMatch,
@@ -100,7 +100,6 @@ function FinishedMatch({
             id: rematchId,
             config: rematchConfig(match.config),
             players: match.players,
-            ...(match.court === undefined ? {} : { court: match.court }),
             ...(match.location === undefined ? {} : { location: match.location }),
             startedAt: Date.now(),
           });
@@ -251,25 +250,23 @@ export default function LiveScreen(): ReactNode {
       ? stagedChoiceLabel(staged, squashTarget)
       : statusLabel(snapshot.moment, names, snapshot.config.sport);
   return (
-    <View flex={1} backgroundColor={colors.screen}>
+    <View flex={1} backgroundColor={colors.background}>
       <YStack
         flex={1}
-        paddingTop={insets.top + 10}
-        paddingBottom={insets.bottom + 14}
+        paddingTop={insets.top + 12}
+        paddingBottom={insets.bottom + 12}
         paddingHorizontal={16}
         gap={12}
       >
         <LiveHeader
           paused={paused}
-          court={match.court}
-          sport={match.config.sport}
-          setNumber={snapshot.setNumber}
+          setLabel={setInPlayLabel(snapshot)}
           clock={durationLabel(playedMs(match, now))}
         />
 
         <SetChips match={match} snapshot={snapshot} />
 
-        <YStack flex={1} gap={10} opacity={paused ? 0.4 : 1}>
+        <YStack flex={1} gap={8} opacity={paused ? 0.4 : 1}>
           <TeamCard
             name={names.A}
             point={pointDisplay(snapshot, "A")}
@@ -279,7 +276,7 @@ export default function LiveScreen(): ReactNode {
             serverNumber={
               snapshot.currentGame?.kind === "pickleball" ? snapshot.currentGame.serverNumber : null
             }
-            hint={snapshot.servingTeam === undefined ? "TAP TO TAKE SERVE" : undefined}
+            hint={snapshot.servingTeam === undefined ? "Tap to take serve" : undefined}
             onScore={() => {
               scorePoint("A");
             }}
@@ -293,7 +290,7 @@ export default function LiveScreen(): ReactNode {
             serverNumber={
               snapshot.currentGame?.kind === "pickleball" ? snapshot.currentGame.serverNumber : null
             }
-            hint={snapshot.servingTeam === undefined ? "TAP TO TAKE SERVE" : undefined}
+            hint={snapshot.servingTeam === undefined ? "Tap to take serve" : undefined}
             onScore={() => {
               scorePoint("B");
             }}
@@ -303,28 +300,33 @@ export default function LiveScreen(): ReactNode {
         {handOut ? (
           <Pill
             alignSelf="center"
-            backgroundColor={colors.accent}
-            paddingVertical={10}
-            paddingHorizontal={22}
+            backgroundColor={colors.tertiaryContainer}
+            height={40}
+            paddingHorizontal={24}
             testID="hand-out-pill"
           >
-            <Display fontSize={15} letterSpacing={1.5} color={colors.onAccent}>
-              HAND OUT
-            </Display>
+            <Body fontSize={14} fontWeight="700" color={colors.onTertiaryContainer}>
+              Hand out
+            </Body>
           </Pill>
         ) : null}
 
         {!handOut && label !== undefined ? (
           <Pill
             alignSelf="center"
-            backgroundColor={colors.ink}
-            paddingVertical={10}
-            paddingHorizontal={22}
+            backgroundColor={colors.inverseSurface}
+            height={40}
+            paddingHorizontal={24}
             testID="status-pill"
           >
-            <Display fontSize={15} letterSpacing={1.5} color={colors.accent}>
+            <Body
+              fontSize={14}
+              fontWeight="700"
+              letterSpacing={0.5}
+              color={colors.inverseOnSurface}
+            >
               {label}
-            </Display>
+            </Body>
           </Pill>
         ) : null}
 

@@ -10,7 +10,7 @@ import {
   saveLastSetup,
   saveMatchPreset,
 } from "@holy-padel/db";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import type { ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import { ScrollView } from "react-native";
@@ -29,7 +29,7 @@ import {
 import { RecentOpponents } from "@/components/recent-opponents.tsx";
 import { RulesSummaryCard } from "@/components/rules-summary.tsx";
 import { TeamFaceoff } from "@/components/team-faceoff.tsx";
-import { Body } from "@/components/ui.tsx";
+import { Label } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { sameSetup, setupTitle } from "@/lib/format.ts";
 import { closeLiveMatch } from "@/lib/match-actions.ts";
@@ -39,7 +39,7 @@ import { newPresetId } from "@/lib/preset-id.ts";
 import { useMatchDraftPersistence } from "@/lib/use-match-draft.ts";
 import { useMatchLineup } from "@/lib/use-match-lineup.ts";
 import { useMatchSetup } from "@/lib/use-match-setup.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 export default function NewMatchScreen(): ReactNode {
   const insets = useSafeAreaInsets();
@@ -167,17 +167,21 @@ export default function NewMatchScreen(): ReactNode {
     setSavingPreset(true);
   };
 
+  if (owner === undefined) {
+    // A fresh install has no profile yet, and a match needs its owner as a
+    // player row — set the profile up first, then come back.
+    return <Redirect href="/edit-profile" />;
+  }
+
   return (
-    <View flex={1} backgroundColor={colors.screen}>
+    <View flex={1} backgroundColor={colors.background}>
       {/* Fixed top bar — the icon back button always offers a way out. */}
-      <YStack paddingTop={insets.top + 12} paddingHorizontal={16} paddingBottom={6} gap={4}>
-        <ModalHeader title="NEW MATCH" onClose={goBack} label="Cancel" titleSize={30} />
-        <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.45)} marginLeft={52}>
-          {matchSubtitle(setup.format, setup.sport)}
-        </Body>
+      <YStack paddingTop={insets.top + 8} paddingHorizontal={16} paddingBottom={8}>
+        <ModalHeader title="New match" onClose={goBack} label="Cancel" />
+        <Label marginLeft={48}>{matchSubtitle(setup.format, setup.sport)}</Label>
       </YStack>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20, gap: 14 }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}>
         <PresetChips
           presets={presets}
           isActive={(preset) => sameSetup(preset.setup, setup)}
@@ -269,9 +273,9 @@ export default function NewMatchScreen(): ReactNode {
 
       {deleting === undefined ? null : (
         <ConfirmSheet
-          title="DELETE PRESET?"
+          title="Delete preset?"
           message={`“${deleting.name}” will be removed from your presets.`}
-          confirmLabel="DELETE"
+          confirmLabel="Delete"
           onConfirm={() => {
             const { id } = deleting;
             setDeleting(undefined);

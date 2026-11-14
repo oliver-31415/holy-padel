@@ -1,15 +1,17 @@
 import type { HeartRateSample, MotionSample } from "@holy-padel/db";
-import type { TeamValues } from "@holy-padel/scoring";
+import type { MatchConfig, TeamValues } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { ScrollView } from "react-native";
 import { XStack, YStack } from "tamagui";
+import { Chip } from "@/components/controls.tsx";
 import { SnakeChart } from "@/components/snake-chart.tsx";
-import { Body, Card, Display, Overline } from "@/components/ui.tsx";
+import { Card, Display, Label, SectionTitle } from "@/components/ui.tsx";
+import { gameCaption } from "@/lib/format.ts";
 import type { WindowActivity } from "@/lib/game-activity.ts";
 import { activityIn, distanceLabel, gameWindows } from "@/lib/game-activity.ts";
 import type { GameSeries } from "@/lib/game-series.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 /** One figure in the per-game activity row. */
 function ActivityStat({
@@ -20,11 +22,9 @@ function ActivityStat({
   readonly label: string;
 }): ReactNode {
   return (
-    <YStack flex={1} alignItems="center" gap={1}>
-      <Display fontSize={17}>{value}</Display>
-      <Body fontSize={8.5} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.4)}>
-        {label}
-      </Body>
+    <YStack flex={1} alignItems="center" gap={2}>
+      <Display fontSize={18}>{value}</Display>
+      <Label>{label}</Label>
     </YStack>
   );
 }
@@ -38,22 +38,22 @@ function ActivityRow({ activity }: { readonly activity: WindowActivity }): React
   const stats: { readonly value: string; readonly label: string }[] = [
     ...(activity.avgBpm === undefined
       ? []
-      : [{ value: String(activity.avgBpm), label: "AVG BPM" }]),
+      : [{ value: String(activity.avgBpm), label: "Avg bpm" }]),
     ...(activity.steps === undefined
       ? []
-      : [{ value: activity.steps.toLocaleString(), label: "STEPS" }]),
+      : [{ value: activity.steps.toLocaleString(), label: "Steps" }]),
     ...(activity.meters === undefined
       ? []
-      : [{ value: distanceLabel(activity.meters), label: "DISTANCE" }]),
+      : [{ value: distanceLabel(activity.meters), label: "Distance" }]),
   ];
   if (stats.length === 0) {
     return null;
   }
   return (
     <XStack
-      backgroundColor={colors.row}
-      borderRadius={14}
-      paddingVertical={10}
+      backgroundColor={colors.cardInset}
+      borderRadius={20}
+      paddingVertical={12}
       testID="game-activity"
     >
       {stats.map((stat) => (
@@ -73,14 +73,14 @@ export function ScoreRaceCard({
   heartRate,
   motion,
   matchStartedAt,
-  sport,
+  config,
   names,
 }: {
   readonly series: readonly GameSeries[];
   readonly heartRate?: readonly HeartRateSample[];
   readonly motion?: readonly MotionSample[];
   readonly matchStartedAt: number;
-  readonly sport?: "padel" | "squash" | "pickleball" | undefined;
+  readonly config: MatchConfig;
   /** Team names for the scrub readout's server. */
   readonly names: TeamValues<string>;
 }): ReactNode {
@@ -101,47 +101,32 @@ export function ScoreRaceCard({
       : undefined;
 
   return (
-    <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={11}>
+    <Card padding={20} gap={12}>
       <XStack alignItems="center" justifyContent="space-between">
-        <Overline>SCORE RACE</Overline>
-        <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.4)}>
-          {sport === "squash" || sport === "pickleball"
-            ? `GAME ${String(game.setNumber)} · ${String(game.pointsA)}–${String(game.pointsB)}`
-            : `SET ${String(game.setNumber)} · GAME ${String(game.gameNumber)} · ${String(game.pointsA)}–${String(game.pointsB)}`}
-        </Body>
+        <SectionTitle>Score race</SectionTitle>
+        <Label>
+          {[
+            gameCaption(config, game.setNumber, game.gameNumber),
+            `${String(game.pointsA)}–${String(game.pointsB)}`,
+          ]
+            .filter((part) => part !== "")
+            .join(" · ")}
+        </Label>
       </XStack>
 
       {series.length > 1 && (
         <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-          <XStack gap={7}>
-            {series.map((entry, entryIndex) => {
-              const active = entryIndex === index;
-              return (
-                <XStack
-                  key={`${String(entry.setNumber)}-${String(entry.gameNumber)}`}
-                  paddingVertical={6}
-                  paddingHorizontal={11}
-                  borderRadius={999}
-                  backgroundColor={active ? colors.text : "transparent"}
-                  borderWidth={active ? 0 : 1}
-                  borderColor={textAlpha(0.16)}
-                  pressStyle={{ opacity: 0.8 }}
-                  role="button"
-                  onPress={() => {
-                    setSelected(entryIndex);
-                  }}
-                >
-                  <Body
-                    fontSize={10.5}
-                    fontWeight="800"
-                    letterSpacing={0.8}
-                    color={active ? colors.screen : textAlpha(0.5)}
-                  >
-                    {`${String(entry.pointsA)}–${String(entry.pointsB)}`}
-                  </Body>
-                </XStack>
-              );
-            })}
+          <XStack gap={8}>
+            {series.map((entry, entryIndex) => (
+              <Chip
+                key={`${String(entry.setNumber)}-${String(entry.gameNumber)}`}
+                label={`${String(entry.pointsA)}–${String(entry.pointsB)}`}
+                selected={entryIndex === index}
+                onPress={() => {
+                  setSelected(entryIndex);
+                }}
+              />
+            ))}
           </XStack>
         </ScrollView>
       )}
@@ -154,18 +139,14 @@ export function ScoreRaceCard({
         pointsA={game.pointsA}
         pointsB={game.pointsB}
         names={names}
-        squash={sport === "squash"}
-        pickleball={sport === "pickleball"}
+        squash={config.sport === "squash"}
+        pickleball={config.sport === "pickleball"}
         {...(heartRate === undefined ? {} : { heartRate })}
       />
 
       <ActivityRow activity={activity} />
 
-      {heartRateLabel !== undefined && (
-        <Body fontSize={10.5} fontWeight="600" color={textAlpha(0.4)}>
-          {heartRateLabel}
-        </Body>
-      )}
+      {heartRateLabel !== undefined && <Label>{heartRateLabel}</Label>}
     </Card>
   );
 }

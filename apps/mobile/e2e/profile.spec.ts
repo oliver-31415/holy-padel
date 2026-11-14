@@ -10,7 +10,7 @@ test.describe("profile tab (design 3f)", () => {
   test("computes the seeded record from the ledger", async ({ page }) => {
     await gotoProfile(page);
 
-    await expect(page.getByText("NICO", { exact: true })).toBeVisible();
+    await expect(page.getByText("Nico", { exact: true })).toBeVisible();
     await expect(page.getByText("Club Padel Norte · plays left side")).toBeVisible();
 
     // 12 finished matches, 8 won: 67%.
@@ -26,7 +26,7 @@ test.describe("profile tab (design 3f)", () => {
 
     // Sport table pairs the record with lifetime rally points.
     await expect(page.getByText("BY SPORT")).toBeVisible();
-    await expect(page.getByText("POINTS", { exact: true })).toBeVisible();
+    await expect(page.getByText("Points", { exact: true })).toBeVisible();
     await expect(page.getByText("543–502", { exact: true })).toBeVisible();
 
     // Settings are grouped in one card.
@@ -41,7 +41,7 @@ test.describe("profile tab (design 3f)", () => {
     await gotoHome(page);
     await startNewMatch(page, { bestOf: 1 });
     await winLoveGames(page, "A", 6);
-    await page.getByRole("button", { name: "DONE", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
 
     // Two new wins: this match, and the seeded live one (Nico & Javi ahead),

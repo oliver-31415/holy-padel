@@ -1,13 +1,13 @@
 import type { NewMatchDefaults } from "@holy-padel/db";
 import type { ReactNode } from "react";
 import { XStack } from "tamagui";
-import { Body, Card, Display, Pill } from "@/components/ui.tsx";
+import { Button, Chip } from "@/components/controls.tsx";
+import { Card, Display } from "@/components/ui.tsx";
 import { setupSummary, setupTitle } from "@/lib/format.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
 
 /**
- * The collapsed rules card: the current sport and format, one EDIT affordance,
- * and a wrap of small pills describing every rule. Keeps the setup screen short
+ * The collapsed rules card: the current sport and format, one Edit affordance,
+ * and a wrap of chips describing every rule. Keeps the setup screen short
  * while a tap opens the full editor.
  */
 export function RulesSummaryCard({
@@ -18,37 +18,24 @@ export function RulesSummaryCard({
   readonly onEdit: () => void;
 }): ReactNode {
   return (
-    <Card borderRadius={20} padding={16} gap={12} testID="rules-summary">
+    <Card padding={20} paddingTop={12} gap={8} testID="rules-summary">
       <XStack alignItems="center" justifyContent="space-between">
-        <Display fontSize={21}>{setupTitle(setup)}</Display>
-        <XStack
-          paddingVertical={6}
-          paddingHorizontal={10}
-          borderRadius={9}
-          pressStyle={{ opacity: 0.6 }}
-          role="button"
+        <Display fontSize={22} fontWeight="600">
+          {setupTitle(setup)}
+        </Display>
+        <Button
+          label="Edit"
           aria-label="Edit match rules"
+          variant="text"
+          size="sm"
+          icon="tune"
+          marginRight={-12}
           onPress={onEdit}
-        >
-          <Body fontSize={11.5} fontWeight="800" letterSpacing={1.2} color={colors.accentOnCard}>
-            EDIT
-          </Body>
-        </XStack>
+        />
       </XStack>
-      <XStack flexWrap="wrap" gap={6}>
+      <XStack flexWrap="wrap" gap={8}>
         {setupSummary(setup).map((label) => (
-          <Pill
-            key={label}
-            backgroundColor={colors.row}
-            borderWidth={1}
-            borderColor={textAlpha(0.08)}
-            paddingVertical={5}
-            paddingHorizontal={10}
-          >
-            <Body fontSize={11.5} fontWeight="700" color={textAlpha(0.65)}>
-              {label}
-            </Body>
-          </Pill>
+          <Chip key={label} label={label} />
         ))}
       </XStack>
     </Card>

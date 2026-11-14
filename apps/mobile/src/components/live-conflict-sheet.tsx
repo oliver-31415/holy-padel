@@ -31,9 +31,9 @@ function LiveConflictSheet({
   const standing = score === "" ? "" : ` (${score})`;
   return (
     <ConfirmSheet
-      title="MATCH STILL LIVE"
+      title="Match still live"
       message={`Your match vs ${rivals}${standing} hasn't ended. Starting a new one saves it as it stands.`}
-      confirmLabel="SAVE & START NEW"
+      confirmLabel="Save & start new"
       tone="primary"
       onConfirm={onConfirm}
       onCancel={onCancel}

@@ -1,16 +1,18 @@
 import type { MatchPreset } from "@holy-padel/db";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { Pressable, ScrollView, TextInput } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, XStack, YStack } from "tamagui";
+import { Pressable, ScrollView } from "react-native";
+import { View, XStack } from "tamagui";
+import { Button, Chip, TextField } from "@/components/controls.tsx";
+import { Icon } from "@/components/icons.tsx";
 import { MatchSetupOptions } from "@/components/new-match-parts.tsx";
+import { Sheet } from "@/components/sheet.tsx";
 import { Body, Display } from "@/components/ui.tsx";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset.ts";
 import type { MatchSetupState } from "@/lib/use-match-setup.ts";
-import { colors, sportColor, textAlpha } from "@/theme/colors.ts";
+import { colors, sportColor } from "@/theme/colors.ts";
 
-/** The sheet chrome shared by the edit and save sheets (backdrop + rounded card). */
+/** The sheet chrome shared by the edit and save sheets. */
 function SheetShell({
   onClose,
   children,
@@ -18,72 +20,26 @@ function SheetShell({
   readonly onClose: () => void;
   readonly children: ReactNode;
 }): ReactNode {
-  const insets = useSafeAreaInsets();
   // Edge-to-edge Android doesn't shrink the window for the keyboard: lift the
-  // sheet by its height or the preset name field and SAVE sit hidden under it.
+  // sheet by its height or the preset name field and Save sit hidden under it.
   const keyboard = useKeyboardInset();
   return (
-    <View position="absolute" top={0} left={0} right={0} bottom={0}>
-      <View
-        flex={1}
-        backgroundColor={textAlpha(0.45)}
-        role="button"
-        aria-label="Close"
-        onPress={onClose}
-        testID="sheet-backdrop"
-      />
-      <YStack
-        backgroundColor={colors.sheet}
-        borderTopLeftRadius={28}
-        borderTopRightRadius={28}
-        paddingTop={14}
-        paddingHorizontal={16}
-        paddingBottom={(keyboard > 0 ? keyboard : insets.bottom) + 16}
-        gap={14}
-        maxHeight="90%"
-        boxShadow="0 -12px 40px rgba(14, 17, 22, 0.25)"
-      >
-        {children}
-      </YStack>
-    </View>
+    <Sheet
+      onDismiss={onClose}
+      dismissLabel="Close"
+      scrimTestID="sheet-backdrop"
+      paddingHorizontal={16}
+      maxHeight="90%"
+      {...(keyboard > 0 ? { bottomInset: keyboard } : {})}
+    >
+      {children}
+    </Sheet>
   );
 }
 
 /** Press feedback for a Pressable that wraps plain (non-pressable) content. */
 function pressedOpacity(opacity: number) {
   return ({ pressed }: { readonly pressed: boolean }) => ({ opacity: pressed ? opacity : 1 });
-}
-
-/** The accent primary button used across the sheet footers. */
-function PrimaryButton({
-  label,
-  ariaLabel,
-  onPress,
-  testID,
-}: {
-  readonly label: string;
-  readonly ariaLabel: string;
-  readonly onPress: () => void;
-  readonly testID?: string;
-}): ReactNode {
-  return (
-    <XStack
-      height={58}
-      backgroundColor={colors.accent}
-      borderRadius={17}
-      alignItems="center"
-      justifyContent="center"
-      pressStyle={{ opacity: 0.85 }}
-      role="button"
-      aria-label={ariaLabel}
-      onPress={onPress}
-      testID={testID}
-    >
-      <Display fontSize={17} letterSpacing={1.2} color={colors.onAccent}>
-        {label}
-      </Display>
-    </XStack>
-  );
 }
 
 /** A recent opponent's name chip; tapping it fills Team B. */
@@ -94,29 +50,10 @@ export function RecentOpponentChip({
   readonly label: string;
   readonly onPress: () => void;
 }): ReactNode {
-  return (
-    <XStack
-      alignItems="center"
-      gap={6}
-      backgroundColor={colors.card}
-      borderWidth={1}
-      borderColor={textAlpha(0.1)}
-      borderRadius={999}
-      paddingVertical={8}
-      paddingHorizontal={13}
-      pressStyle={{ opacity: 0.8 }}
-      role="button"
-      aria-label={`Play ${label}`}
-      onPress={onPress}
-    >
-      <Body fontSize={12.5} fontWeight="700" color={colors.text}>
-        {label}
-      </Body>
-    </XStack>
-  );
+  return <Chip label={label} aria-label={`Play ${label}`} onPress={onPress} />;
 }
 
-/** One saved-preset chip; ink fill when it matches the setup on screen. */
+/** One saved-preset chip; tonal fill when it matches the setup on screen. */
 function PresetChip({
   preset,
   active,
@@ -137,6 +74,7 @@ function PresetChip({
       onLongPress={onLongPress}
       role="button"
       aria-label={preset.name}
+      aria-pressed={active}
       // The Pressable owns the touch and the press feedback. A pressStyle on
       // the inner XStack would make it a second responder that swallows the
       // tap on native (web bubbles it, so the bug only shows on device).
@@ -144,13 +82,13 @@ function PresetChip({
     >
       <XStack
         alignItems="center"
-        gap={7}
-        backgroundColor={active ? colors.text : colors.card}
-        borderWidth={active ? 0 : 1}
-        borderColor={textAlpha(0.1)}
-        borderRadius={999}
-        paddingVertical={9}
-        paddingHorizontal={13}
+        gap={8}
+        height={32}
+        backgroundColor={active ? colors.secondaryContainer : "transparent"}
+        borderWidth={1}
+        borderColor={active ? "transparent" : colors.outlineVariant}
+        borderRadius={8}
+        paddingHorizontal={12}
       >
         <View
           width={8}
@@ -158,7 +96,11 @@ function PresetChip({
           borderRadius={4}
           backgroundColor={sportColor(preset.setup.sport)}
         />
-        <Body fontSize={12.5} fontWeight="700" color={active ? colors.screen : textAlpha(0.6)}>
+        <Body
+          fontSize={14}
+          fontWeight="500"
+          color={active ? colors.onSecondaryContainer : colors.onSurfaceVariant}
+        >
           {preset.name}
         </Body>
       </XStack>
@@ -167,8 +109,8 @@ function PresetChip({
 }
 
 /**
- * The horizontal preset row: one chip per saved preset, then the dashed
- * "+ Save setup" affordance. Tapping a chip fills every rule at once.
+ * The horizontal preset row: one chip per saved preset, then the
+ * "Save setup" affordance. Tapping a chip fills every rule at once.
  */
 export function PresetChips({
   presets,
@@ -187,7 +129,7 @@ export function PresetChips({
     <ScrollView
       horizontal={true}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 7, paddingRight: 4 }}
+      contentContainerStyle={{ gap: 8, paddingRight: 4, alignItems: "center" }}
       testID="preset-chips"
     >
       {presets.map((preset) => (
@@ -209,18 +151,10 @@ export function PresetChips({
         aria-label="Save setup as preset"
         style={pressedOpacity(0.7)}
       >
-        <XStack
-          alignItems="center"
-          gap={6}
-          borderRadius={999}
-          borderWidth={1.5}
-          borderStyle="dashed"
-          borderColor={textAlpha(0.2)}
-          paddingVertical={9}
-          paddingHorizontal={13}
-        >
-          <Body fontSize={12.5} fontWeight="800" letterSpacing={0.8} color={textAlpha(0.5)}>
-            + SAVE SETUP
+        <XStack alignItems="center" gap={4} height={32} borderRadius={8} paddingHorizontal={8}>
+          <Icon name="bookmarkAdd" size={18} color={colors.primary} />
+          <Body fontSize={14} fontWeight="500" color={colors.primary}>
+            Save setup
           </Body>
         </XStack>
       </Pressable>
@@ -312,41 +246,15 @@ function RulesEditBody({
           teamLabels={teamLabels}
         />
       </ScrollView>
-      <XStack gap={10}>
-        <XStack
+      <XStack gap={8}>
+        <Button
           flex={1}
-          height={52}
-          backgroundColor={colors.card}
-          borderWidth={1}
-          borderColor={textAlpha(0.12)}
-          borderRadius={17}
-          alignItems="center"
-          justifyContent="center"
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          aria-label="Save as preset"
+          label="Save as preset"
+          variant="tonal"
+          paddingHorizontal={8}
           onPress={onSaveAsPreset}
-        >
-          <Body fontSize={11.5} fontWeight="800" letterSpacing={1} color={colors.text}>
-            SAVE AS PRESET
-          </Body>
-        </XStack>
-        <XStack
-          flex={1}
-          height={52}
-          backgroundColor={colors.accent}
-          borderRadius={17}
-          alignItems="center"
-          justifyContent="center"
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          aria-label="Use these rules"
-          onPress={onClose}
-        >
-          <Display fontSize={14.5} letterSpacing={1} color={colors.onAccent}>
-            USE THESE RULES
-          </Display>
-        </XStack>
+        />
+        <Button flex={1} label="Use these rules" paddingHorizontal={8} onPress={onClose} />
       </XStack>
     </>
   );
@@ -393,35 +301,17 @@ export function SavePresetSheet({
 }): ReactNode {
   return (
     <SheetShell onClose={onCancel}>
-      <Display fontSize={24}>SAVE PRESET</Display>
-      <TextInput
-        style={inputStyle()}
+      <Display fontSize={24} paddingHorizontal={8}>
+        Save preset
+      </Display>
+      <TextField
         value={value}
         onChangeText={onChange}
         placeholder="Preset name"
-        placeholderTextColor={textAlpha(0.4)}
         autoFocus={true}
         testID="preset-name"
       />
-      <PrimaryButton
-        label="SAVE PRESET"
-        ariaLabel="Save preset"
-        onPress={onSave}
-        testID="save-preset"
-      />
+      <Button label="Save preset" onPress={onSave} testID="save-preset" />
     </SheetShell>
   );
-}
-
-/** Built per render: a module-level object would freeze the light palette. */
-function inputStyle() {
-  return {
-    fontSize: 15,
-    fontFamily: "Archivo_600SemiBold",
-    color: colors.text,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: colors.input,
-    borderRadius: 13,
-  } as const;
 }

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { View } from "tamagui";
-import { colors } from "@/theme/colors.ts";
+import { ProgressBar } from "@/components/ui.tsx";
 
 /** The W/L share bar from the partner and player screens. Draws count toward the total, not the win share. */
 export function RecordBar({
@@ -13,16 +12,5 @@ export function RecordBar({
   readonly drew?: number;
 }): ReactNode {
   const total = won + lost + drew;
-  const share = total === 0 ? 0 : won / total;
-  return (
-    <View
-      width={104}
-      height={7}
-      borderRadius={999}
-      backgroundColor={colors.greige}
-      overflow="hidden"
-    >
-      <View width={`${String(share * 100)}%`} height="100%" backgroundColor={colors.accent} />
-    </View>
-  );
+  return <ProgressBar share={total === 0 ? 0 : won / total} width={96} />;
 }

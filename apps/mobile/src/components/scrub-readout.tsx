@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { XStack, YStack } from "tamagui";
-import { Body, Display } from "@/components/ui.tsx";
+import { Display, Label } from "@/components/ui.tsx";
 import type { ScrubReadout } from "@/lib/score-scrub.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 /** One figure in the scrub readout. */
 function ReadoutStat({
@@ -15,23 +15,21 @@ function ReadoutStat({
   readonly color?: string;
 }): ReactNode {
   return (
-    <YStack flex={1} alignItems="center" gap={1}>
-      <Display fontSize={17} {...(color === undefined ? {} : { color })}>
+    <YStack flex={1} alignItems="center" gap={2}>
+      <Display fontSize={16} {...(color === undefined ? {} : { color })}>
         {value}
       </Display>
-      <Body fontSize={8.5} fontWeight="800" letterSpacing={1.2} color={color ?? textAlpha(0.4)}>
-        {label}
-      </Body>
+      <Label {...(color === undefined ? {} : { color })}>{label}</Label>
     </YStack>
   );
 }
 
-/** The serving cell's label: a hand-out is named by its sport's word, else the cell reads SERVING. */
+/** The serving cell's label: a hand-out is named by its sport's word, else the cell reads Serving. */
 function handOutLabel(readout: ScrubReadout): string {
   if (readout.sideOut === true) {
-    return "SIDE-OUT";
+    return "Side-out";
   }
-  return readout.handOut === true ? "HAND-OUT" : "SERVING";
+  return readout.handOut === true ? "Hand-out" : "Serving";
 }
 
 /**
@@ -46,15 +44,13 @@ export function ScrubReadoutRow({
 }): ReactNode {
   if (readout === undefined) {
     return (
-      <XStack alignItems="center" justifyContent="center" height={44}>
-        <Body fontSize={9.5} fontWeight="700" letterSpacing={0.8} color={textAlpha(0.4)}>
-          PRESS AND HOLD THE LINE TO SEE ANY MOMENT
-        </Body>
+      <XStack alignItems="center" justifyContent="center" height={48}>
+        <Label>Press and hold the line to see any moment</Label>
       </XStack>
     );
   }
   return (
-    <XStack alignItems="center" height={44} testID="scrub-readout">
+    <XStack alignItems="center" height={48} testID="scrub-readout">
       {readout.serving === undefined ? null : (
         // A hand-out is named in the serving cell: the team that served lost the rally.
         <ReadoutStat label={handOutLabel(readout)} value={readout.serving} />
@@ -64,10 +60,10 @@ export function ScrubReadoutRow({
         <ReadoutStat label={readout.gamesLabel} value={readout.games} />
       )}
       {readout.bpm === undefined ? null : (
-        <ReadoutStat label="BPM" value={readout.bpm} color={colors.danger} />
+        <ReadoutStat label="bpm" value={readout.bpm} color={colors.error} />
       )}
       {readout.elapsed === undefined ? null : (
-        <ReadoutStat label="IN GAME" value={readout.elapsed} />
+        <ReadoutStat label="In game" value={readout.elapsed} />
       )}
     </XStack>
   );

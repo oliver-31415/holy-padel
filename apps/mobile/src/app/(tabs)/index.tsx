@@ -15,11 +15,20 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
-import { FloodlightGlow } from "@/components/court-art.tsx";
+import { Button } from "@/components/controls.tsx";
 import { HistoryGrid } from "@/components/history-grid.tsx";
-import { ArrowRight, Plus } from "@/components/icons.tsx";
+import { Icon } from "@/components/icons.tsx";
 import { useLiveConflictGuard } from "@/components/live-conflict-sheet.tsx";
-import { Avatar, Body, Card, Display, LiveDot, Overline, ResultBadge } from "@/components/ui.tsx";
+import {
+  Avatar,
+  Body,
+  Card,
+  Display,
+  Label,
+  LiveDot,
+  ResultBadge,
+  SectionTitle,
+} from "@/components/ui.tsx";
 import { WatchPill } from "@/components/watch-status.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import {
@@ -29,12 +38,13 @@ import {
   ownerTeamOf,
   pairInitials,
   pairLabel,
+  setInPlayLabel,
 } from "@/lib/format.ts";
 import { computeHistory } from "@/lib/history.ts";
 import { closeLiveMatch, rematchConfig } from "@/lib/match-actions.ts";
 import { newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
-import { accentAlpha, colors, sportColor, textAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { colors, sportColor } from "@/theme/colors.ts";
 import { useWatchLink } from "@/watch/use-watch-connection.ts";
 
 function pointCallOf(snapshot: MatchSnapshot, team: "A" | "B"): string {
@@ -45,26 +55,51 @@ function pointCallOf(snapshot: MatchSnapshot, team: "A" | "B"): string {
   return game.kind === "standard" ? game.calls[team] : String(game.points[team]);
 }
 
-/** The sport marker tag on the live card — small fill, ink text. */
+/** The sport marker tag on the live card — small fill, dark text. */
 function SportTag({
   sport,
 }: {
   readonly sport: "padel" | "squash" | "pickleball" | undefined;
 }): ReactNode {
+  const name = sport ?? "padel";
   return (
     <View
       backgroundColor={sportColor(sport)}
-      borderRadius={6}
-      paddingVertical={3}
-      paddingHorizontal={7}
+      borderRadius={8}
+      height={24}
+      justifyContent="center"
+      paddingHorizontal={8}
     >
-      <Body fontSize={10} fontWeight="800" letterSpacing={1.4} color={colors.onAccent}>
-        {(sport ?? "padel").toUpperCase()}
-      </Body>
+      <Label fontWeight="600" color={colors.onSport}>
+        {name.charAt(0).toUpperCase() + name.slice(1)}
+      </Label>
     </View>
   );
 }
 
+/** One team's line on the live card: initials, then the point call. */
+function LivePointRow({
+  initials,
+  call,
+  testID,
+}: {
+  readonly initials: string;
+  readonly call: string;
+  readonly testID: string;
+}): ReactNode {
+  return (
+    <XStack alignItems="center" gap={12}>
+      <Body fontSize={22} fontWeight="500" color={colors.onPrimaryContainer} width={64}>
+        {initials}
+      </Body>
+      <Display fontSize={36} color={colors.onPrimaryContainer} testID={testID}>
+        {call}
+      </Display>
+    </XStack>
+  );
+}
+
+/** The hero card for the match in play: the highlight colour, edge to edge. */
 function LiveCard({
   match,
   snapshot,
@@ -75,104 +110,63 @@ function LiveCard({
   readonly now: number;
 }): ReactNode {
   const clock = durationLabel(now - match.startedAt);
-  const meta = [`SET ${String(snapshot.setNumber)}`, clock, match.court?.toUpperCase()]
-    .filter((part): part is string => part !== undefined)
-    .join(" · ");
+  const meta = [setInPlayLabel(snapshot), clock].filter((part) => part !== "").join(" · ");
   return (
-    <View
-      backgroundColor={colors.ink}
-      borderRadius={22}
-      padding={18}
-      gap={12}
-      overflow="hidden"
-      position="relative"
-    >
-      <FloodlightGlow color={colors.teamB} opacity={0.28} />
+    <View backgroundColor={colors.primaryContainer} borderRadius={36} padding={20} gap={16}>
       <XStack alignItems="center" justifyContent="space-between">
-        <XStack alignItems="center" gap={6}>
-          <LiveDot size={7} />
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.accent}>
-            LIVE NOW
-          </Body>
+        <XStack alignItems="center" gap={8}>
+          <XStack
+            alignItems="center"
+            gap={6}
+            height={24}
+            paddingHorizontal={8}
+            borderRadius={8}
+            backgroundColor={colors.onPrimaryContainer}
+          >
+            <LiveDot size={6} color={colors.primaryContainer} />
+            <Label fontWeight="600" color={colors.primaryContainer}>
+              Live now
+            </Label>
+          </XStack>
           <SportTag sport={match.config.sport} />
         </XStack>
-        <Body fontSize={11} fontWeight="700" letterSpacing={1.4} color={whiteAlpha(0.5)}>
-          {meta}
-        </Body>
+        <Label color={colors.onPrimaryContainer}>{meta}</Label>
       </XStack>
       <XStack alignItems="center" justifyContent="space-between">
-        <YStack gap={8}>
-          <XStack alignItems="flex-end" gap={12}>
-            <Display fontSize={22} color={colors.white} width={64}>
-              {pairInitials(match.names.A)}
-            </Display>
-            <Display fontSize={40} color={colors.accent} testID="home-point-A">
-              {pointCallOf(snapshot, "A")}
-            </Display>
-          </XStack>
-          <XStack alignItems="flex-end" gap={12}>
-            <Display fontSize={22} color={colors.white} width={64}>
-              {pairInitials(match.names.B)}
-            </Display>
-            <Display fontSize={40} color={colors.white} testID="home-point-B">
-              {pointCallOf(snapshot, "B")}
-            </Display>
-          </XStack>
+        <YStack gap={4}>
+          <LivePointRow
+            initials={pairInitials(match.names.A)}
+            call={pointCallOf(snapshot, "A")}
+            testID="home-point-A"
+          />
+          <LivePointRow
+            initials={pairInitials(match.names.B)}
+            call={pointCallOf(snapshot, "B")}
+            testID="home-point-B"
+          />
         </YStack>
         <YStack alignItems="flex-end">
-          <Overline color={whiteAlpha(0.4)}>SETS</Overline>
-          <Display fontSize={26} color={colors.white} marginTop={3} testID="home-score-line">
+          <Label color={colors.onPrimaryContainer}>Set scores</Label>
+          <Display
+            fontSize={24}
+            color={colors.onPrimaryContainer}
+            marginTop={2}
+            testID="home-score-line"
+          >
             {liveScoreLine(snapshot)}
           </Display>
         </YStack>
       </XStack>
-      <XStack
-        height={48}
-        backgroundColor={colors.accent}
-        borderRadius={14}
-        alignItems="center"
-        justifyContent="center"
-        gap={9}
-        pressStyle={{ opacity: 0.85 }}
-        role="button"
+      <Button
+        label="Resume scoring"
+        trailingIcon="arrowForward"
+        backgroundColor={colors.onPrimaryContainer}
+        contentColor={colors.primaryContainer}
         onPress={() => {
           router.push(`/live/${match.id}`);
         }}
-      >
-        <Display fontSize={16} letterSpacing={1.4} color={colors.onAccent}>
-          RESUME SCORING
-        </Display>
-        <ArrowRight size={15} color={colors.onAccent} />
-      </XStack>
+      />
     </View>
-  );
-}
-
-/** The NEW MATCH action — the primary (orange) CTA only when no match is live. */
-function NewMatchButton({ live }: { readonly live: boolean }): ReactNode {
-  return (
-    <XStack
-      flex={1.5}
-      height={58}
-      backgroundColor={live ? colors.card : colors.accent}
-      borderWidth={live ? 2 : 0}
-      borderColor={colors.ink}
-      borderRadius={16}
-      alignItems="center"
-      justifyContent="center"
-      gap={9}
-      boxShadow={live ? "0 2px 10px rgba(14, 17, 22, 0.06)" : `0 6px 18px ${accentAlpha(0.45)}`}
-      pressStyle={{ opacity: 0.85 }}
-      role="button"
-      onPress={() => {
-        router.push("/new-match");
-      }}
-    >
-      <Plus size={14} color={live ? colors.text : colors.onAccent} />
-      <Display fontSize={16} letterSpacing={1.2} color={live ? colors.text : colors.onAccent}>
-        NEW MATCH
-      </Display>
-    </XStack>
   );
 }
 
@@ -218,7 +212,6 @@ export default function HomeScreen(): ReactNode {
         id,
         config: rematchConfig(lastFinished.config),
         players: lastFinished.players,
-        ...(lastFinished.court === undefined ? {} : { court: lastFinished.court }),
         ...(lastFinished.location === undefined ? {} : { location: lastFinished.location }),
         startedAt: Date.now(),
       });
@@ -231,19 +224,19 @@ export default function HomeScreen(): ReactNode {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.screen }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
-        paddingTop: insets.top + 12,
+        paddingTop: insets.top + 8,
         paddingHorizontal: 16,
-        paddingBottom: insets.bottom + 90,
+        paddingBottom: insets.bottom + 96,
         gap: 12,
       }}
     >
-      <XStack alignItems="center" gap={12}>
-        <Avatar letter={owner?.name.charAt(0) ?? "N"} size={44} />
+      <XStack alignItems="center" gap={16} paddingTop={8}>
+        <Avatar letter={owner?.name.charAt(0) ?? "?"} size={56} shape="cookie" />
         <YStack flex={1}>
-          <Overline letterSpacing={1.6}>{owner?.club ?? "Holy Padel"}</Overline>
-          <Display fontSize={24}>{`HOLA, ${(owner?.name ?? "").toUpperCase()}`}</Display>
+          <Label>{owner?.club ?? "Holy Padel"}</Label>
+          <Display fontSize={28}>{owner === undefined ? "Welcome" : `Hola, ${owner.name}`}</Display>
         </YStack>
         <WatchPill link={watch} />
       </XStack>
@@ -252,49 +245,80 @@ export default function HomeScreen(): ReactNode {
         <LiveCard match={live} snapshot={liveSnapshot} now={now} />
       ) : null}
 
-      <XStack gap={8}>
-        <NewMatchButton live={live !== undefined} />
-        <YStack
-          flex={1}
-          height={58}
-          borderWidth={1}
-          borderColor={textAlpha(0.16)}
-          borderRadius={16}
-          alignItems="center"
-          justifyContent="center"
-          gap={2}
-          pressStyle={{ opacity: 0.7 }}
-          role="button"
-          onPress={() => {
-            if (lastFinished !== undefined) {
-              rematchGuard.request();
-            }
-          }}
-        >
-          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.5)}>
-            REMATCH
-          </Body>
-          <Body fontSize={10.5} fontWeight="700" color={textAlpha(0.4)}>
-            {lastFinished === undefined
-              ? "no matches yet"
-              : `vs ${pairLabel(opponentsOf(lastFinished, ownerTeamOf(lastFinished, ownerId)))}`}
-          </Body>
-        </YStack>
-      </XStack>
+      {owner === undefined ? (
+        // A fresh install: nothing can be scored until there is a profile to score it for.
+        <Card padding={20} gap={12}>
+          <YStack gap={4}>
+            <SectionTitle>Set up your profile</SectionTitle>
+            <Body fontSize={14} lineHeight={20} color={colors.onSurfaceVariant}>
+              Add your name so matches and stats are recorded as yours. It stays on this phone.
+            </Body>
+          </YStack>
+          <Button
+            label="Set up profile"
+            icon="person"
+            onPress={() => {
+              router.push("/edit-profile");
+            }}
+          />
+        </Card>
+      ) : (
+        <XStack gap={8}>
+          {/* The primary (filled) CTA only when no match is live. */}
+          <Button
+            flex={1.4}
+            size="lg"
+            label="New match"
+            icon="add"
+            variant={live === undefined ? "filled" : "tonal"}
+            paddingHorizontal={8}
+            onPress={() => {
+              router.push("/new-match");
+            }}
+          />
+          <YStack
+            flex={1}
+            height={72}
+            borderRadius={24}
+            backgroundColor={colors.card}
+            alignItems="center"
+            justifyContent="center"
+            paddingHorizontal={12}
+            pressStyle={{ opacity: 0.8, borderRadius: 16 }}
+            role="button"
+            onPress={() => {
+              if (lastFinished !== undefined) {
+                rematchGuard.request();
+              }
+            }}
+          >
+            <XStack alignItems="center" gap={4}>
+              <Icon name="replay" size={18} color={colors.primary} />
+              <Body fontSize={14} fontWeight="600" color={colors.primary}>
+                Rematch
+              </Body>
+            </XStack>
+            <Label numberOfLines={1}>
+              {lastFinished === undefined
+                ? "no matches yet"
+                : `vs ${pairLabel(opponentsOf(lastFinished, ownerTeamOf(lastFinished, ownerId)))}`}
+            </Label>
+          </YStack>
+        </XStack>
+      )}
 
       <Card
-        borderRadius={18}
-        paddingVertical={14}
-        paddingHorizontal={17}
+        paddingVertical={16}
+        paddingHorizontal={20}
         flexDirection="row"
         alignItems="center"
         justifyContent="space-between"
       >
-        <Overline>FORM</Overline>
+        <SectionTitle>Form</SectionTitle>
         <XStack gap={6}>
           {stats.form.map((outcome, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: the strip is positional by design
-            <ResultBadge key={index} won={outcome === "won"} drew={outcome === "drew"} size={24} />
+            <ResultBadge key={index} won={outcome === "won"} drew={outcome === "drew"} size={28} />
           ))}
         </XStack>
         <Display

@@ -8,7 +8,7 @@ test.describe("match defaults and draft persistence", () => {
     await expect(page.getByTestId("defaults-row")).toContainText("Padel · Doubles · best of 3");
 
     await page.getByTestId("defaults-row").click();
-    await expect(page.getByText("DEFAULTS", { exact: true })).toBeVisible();
+    await expect(page.getByText("Changes save instantly")).toBeVisible();
 
     // Switch the defaults to squash HIHO first-to-9; every tap applies.
     await page.getByRole("button", { name: "Squash", exact: true }).click();

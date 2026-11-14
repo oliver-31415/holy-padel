@@ -1,15 +1,16 @@
 import type { HeartRateSample, MotionSample } from "@holy-padel/db";
-import type { TeamId } from "@holy-padel/scoring";
+import type { MatchConfig, TeamId } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
 import { View, XStack, YStack } from "tamagui";
 import { Figure, ZoneBar, zoneColor } from "@/components/insight-parts.tsx";
-import { Body, Card, Overline } from "@/components/ui.tsx";
+import { Card, Label, SectionTitle } from "@/components/ui.tsx";
 import { effortFloor, timeInZones, ZONES, zoneIndex } from "@/lib/effort.ts";
+import { gameCaption } from "@/lib/format.ts";
 import { activityIn, distanceLabel, gameWindows, matchWindow } from "@/lib/game-activity.ts";
 import type { GameSeries } from "@/lib/game-series.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
-const STRIP_HEIGHT = 46;
+const STRIP_HEIGHT = 56;
 
 interface GameEffortBar {
   readonly key: string;
@@ -22,9 +23,9 @@ function gameEfforts(
   series: readonly GameSeries[],
   matchStartedAt: number,
   heartRate: readonly HeartRateSample[],
-  side: { readonly team: TeamId; readonly squash: boolean },
+  side: { readonly team: TeamId; readonly config: MatchConfig },
 ): GameEffortBar[] {
-  const { team, squash } = side;
+  const { team, config } = side;
   const windows = gameWindows(series, matchStartedAt);
   return series.map((game, index) => {
     const window = windows[index];
@@ -32,9 +33,7 @@ function gameEfforts(
     const won = team === "A" ? game.pointsA > game.pointsB : game.pointsB > game.pointsA;
     return {
       key: `${String(game.setNumber)}-${String(game.gameNumber)}`,
-      label: squash
-        ? `GAME ${String(game.setNumber)}`
-        : `SET ${String(game.setNumber)} · GAME ${String(game.gameNumber)}`,
+      label: gameCaption(config, game.setNumber, game.gameNumber).toLowerCase(),
       avgBpm,
       won,
     };
@@ -62,13 +61,15 @@ function EffortStrip({
   return (
     <YStack gap={8} testID="effort-strip">
       <XStack alignItems="center" justifyContent="space-between">
-        <Body fontSize={9.5} fontWeight="800" letterSpacing={1.4} color={textAlpha(0.4)}>
-          EFFORT BY GAME
-        </Body>
+        <Label fontWeight="600" color={colors.onSurface}>
+          Effort by game
+        </Label>
         {hardest === undefined ? null : (
-          <Body fontSize={10} fontWeight="800" letterSpacing={1} color={textAlpha(0.55)}>
-            {`HARDEST ${hardest.label} · ${String(high)} BPM`}
-          </Body>
+          <Label>
+            {hardest.label === ""
+              ? `Hardest · ${String(high)} bpm`
+              : `Hardest ${hardest.label} · ${String(high)} bpm`}
+          </Label>
         )}
       </XStack>
       <XStack height={STRIP_HEIGHT} alignItems="flex-end" gap={3}>
@@ -81,9 +82,11 @@ function EffortStrip({
                 ? 2
                 : 6 + ((bar.avgBpm - floor) / Math.max(1, high - floor)) * (STRIP_HEIGHT - 6)
             }
-            borderRadius={3}
+            borderRadius={4}
             backgroundColor={
-              bar.avgBpm === undefined ? textAlpha(0.1) : zoneColor(zoneIndex(bar.avgBpm, maxHr))
+              bar.avgBpm === undefined
+                ? colors.surfaceContainerHighest
+                : zoneColor(zoneIndex(bar.avgBpm, maxHr))
             }
           />
         ))}
@@ -95,7 +98,7 @@ function EffortStrip({
               width={4}
               height={4}
               borderRadius={999}
-              backgroundColor={bar.won ? colors.accent : textAlpha(0.18)}
+              backgroundColor={bar.won ? colors.primary : colors.outlineVariant}
             />
           </XStack>
         ))}
@@ -123,14 +126,14 @@ function MatchZones({
   return (
     <YStack gap={8} testID="match-zones">
       <XStack alignItems="center" justifyContent="space-between">
-        <Body fontSize={9.5} fontWeight="800" letterSpacing={1.4} color={textAlpha(0.4)}>
-          HEART RATE ZONES
-        </Body>
-        <Body fontSize={10} fontWeight="800" letterSpacing={1} color={textAlpha(0.55)}>
-          {`MOSTLY ${ZONES[top]?.label ?? ""} · ${String(Math.round(((zones[top] ?? 0) / total) * 100))}%`}
-        </Body>
+        <Label fontWeight="600" color={colors.onSurface}>
+          Heart rate zones
+        </Label>
+        <Label>
+          {`Mostly ${(ZONES[top]?.label ?? "").toLowerCase()} · ${String(Math.round(((zones[top] ?? 0) / total) * 100))}%`}
+        </Label>
       </XStack>
-      <ZoneBar zones={zones} height={10} />
+      <ZoneBar zones={zones} height={12} />
     </YStack>
   );
 }
@@ -147,7 +150,7 @@ export function MatchActivityCard({
   motion,
   team,
   maxHr,
-  squash,
+  config,
 }: {
   readonly series: readonly GameSeries[];
   readonly matchStartedAt: number;
@@ -155,7 +158,7 @@ export function MatchActivityCard({
   readonly motion: readonly MotionSample[] | undefined;
   readonly team: TeamId;
   readonly maxHr: number;
-  readonly squash: boolean;
+  readonly config: MatchConfig;
 }): ReactNode {
   const window = matchWindow(series, matchStartedAt);
   if (window === undefined) {
@@ -163,12 +166,12 @@ export function MatchActivityCard({
   }
   const total = activityIn(window, heartRate, motion);
   const figures = [
-    ...(total.avgBpm === undefined ? [] : [{ value: String(total.avgBpm), label: "AVG BPM" }]),
-    ...(total.maxBpm === undefined ? [] : [{ value: String(total.maxBpm), label: "PEAK BPM" }]),
-    ...(total.steps === undefined ? [] : [{ value: total.steps.toLocaleString(), label: "STEPS" }]),
+    ...(total.avgBpm === undefined ? [] : [{ value: String(total.avgBpm), label: "Avg bpm" }]),
+    ...(total.maxBpm === undefined ? [] : [{ value: String(total.maxBpm), label: "Peak bpm" }]),
+    ...(total.steps === undefined ? [] : [{ value: total.steps.toLocaleString(), label: "Steps" }]),
     ...(total.meters === undefined
       ? []
-      : [{ value: distanceLabel(total.meters), label: "DISTANCE" }]),
+      : [{ value: distanceLabel(total.meters), label: "Distance" }]),
   ];
   if (figures.length === 0) {
     return null;
@@ -178,20 +181,10 @@ export function MatchActivityCard({
       ? undefined
       : Math.round(total.steps / series.length);
   return (
-    <Card
-      borderRadius={20}
-      paddingVertical={16}
-      paddingHorizontal={17}
-      gap={15}
-      testID="match-activity"
-    >
+    <Card padding={20} gap={16} testID="match-activity">
       <XStack alignItems="center" justifyContent="space-between">
-        <Overline>ON YOUR WATCH</Overline>
-        {perGame === undefined ? null : (
-          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.4)}>
-            {`${perGame.toLocaleString()} STEPS / GAME`}
-          </Body>
-        )}
+        <SectionTitle>On your watch</SectionTitle>
+        {perGame === undefined ? null : <Label>{`${perGame.toLocaleString()} steps / game`}</Label>}
       </XStack>
       <XStack>
         {figures.map((figure) => (
@@ -201,7 +194,7 @@ export function MatchActivityCard({
       {heartRate === undefined ? null : (
         <>
           <EffortStrip
-            bars={gameEfforts(series, matchStartedAt, heartRate, { team, squash })}
+            bars={gameEfforts(series, matchStartedAt, heartRate, { team, config })}
             maxHr={maxHr}
           />
           <MatchZones heartRate={heartRate} window={window} maxHr={maxHr} />

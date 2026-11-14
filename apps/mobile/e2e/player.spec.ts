@@ -8,26 +8,26 @@ async function gotoProfile(page: Page): Promise<void> {
 test.describe("player profiles", () => {
   test("the players card lists the roster and opens a profile", async ({ page }) => {
     await gotoProfile(page);
-    await expect(page.getByText("PLAYERS", { exact: true })).toBeVisible();
+    await expect(page.getByText("Players", { exact: true })).toBeVisible();
     await expect(page.getByTestId("player-javi")).toContainText("matches with you");
 
     await page.getByTestId("player-javi").click();
-    await expect(page.getByText("JAVI", { exact: true })).toBeVisible();
+    await expect(page.getByText("Javi", { exact: true }).last()).toBeVisible();
     await expect(page.getByText("Club Padel Norte · plays right side")).toBeVisible();
     // The profile tab stays mounted (hidden) behind the player route.
-    await expect(page.getByText("PLAYED", { exact: true }).last()).toBeVisible();
-    await expect(page.getByText("WITH YOU", { exact: true })).toBeVisible();
-    await expect(page.getByText("MATCHES WITH YOU", { exact: true })).toBeVisible();
+    await expect(page.getByText("Played", { exact: true }).last()).toBeVisible();
+    await expect(page.getByText("With you", { exact: true })).toBeVisible();
+    await expect(page.getByText("Matches with you", { exact: true })).toBeVisible();
   });
 
   test("a partner row on the Stats tab opens that player's profile", async ({ page }) => {
     await page.goto("/stats");
     await expect(page.getByText("PARTNERS & RIVALS")).toBeVisible({ timeout: 90_000 });
     await page.getByTestId("partner-javi").click();
-    await expect(page.getByText("JAVI", { exact: true })).toBeVisible();
+    await expect(page.getByText("Javi", { exact: true }).last()).toBeVisible();
     // Javi partners the owner in the seed but never opposes him, so the
     // profile shows the together card rather than a "vs you" row.
-    await expect(page.getByText("MATCHES WITH YOU", { exact: true })).toBeVisible();
+    await expect(page.getByText("Matches with you", { exact: true })).toBeVisible();
   });
 
   test("editing a player updates name and side", async ({ page }) => {
@@ -40,7 +40,7 @@ test.describe("player profiles", () => {
     await page.getByTestId("side-left").click();
     await page.getByTestId("save-profile").click();
 
-    await expect(page.getByText("JAVIER", { exact: true })).toBeVisible();
+    await expect(page.getByText("Javier", { exact: true }).last()).toBeVisible();
     // The edit screen stays mounted (hidden) behind the player profile.
     await expect(page.getByText("Club Padel Norte · plays left side").last()).toBeVisible();
   });
@@ -50,7 +50,7 @@ test.describe("player profiles", () => {
     await page.getByPlaceholder("New player").fill("Cameron");
     await page.getByPlaceholder("New player").press("Enter");
 
-    await expect(page.getByText("CAMERON", { exact: true })).toBeVisible();
+    await expect(page.getByText("Cameron", { exact: true }).last()).toBeVisible();
     await expect(page.getByText("No matches partnering you yet")).toBeVisible();
   });
 
@@ -94,7 +94,7 @@ test.describe("player profiles", () => {
     await gotoProfile(page);
     await page.getByPlaceholder("New player").fill("Cameron");
     await page.getByPlaceholder("New player").press("Enter");
-    await expect(page.getByText("CAMERON", { exact: true })).toBeVisible();
+    await expect(page.getByText("Cameron", { exact: true }).last()).toBeVisible();
 
     await page.getByTestId("edit-player").click();
     await page.getByTestId("delete-player").click();
@@ -103,6 +103,6 @@ test.describe("player profiles", () => {
 
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
     await gotoProfile(page);
-    await expect(page.getByText("CAMERON", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Cameron", { exact: true })).toHaveCount(0);
   });
 });

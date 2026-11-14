@@ -7,8 +7,8 @@ test.describe("match setup and player picker (designs 1f + 3b)", () => {
     await page.getByRole("button", { name: "NEW MATCH" }).click();
 
     await expect(page.getByText("Doubles · FIP scoring")).toBeVisible();
-    await expect(page.getByText("TEAM A", { exact: true })).toBeVisible();
-    await expect(page.getByText("TEAM B", { exact: true })).toBeVisible();
+    await expect(page.getByText("Team A", { exact: true })).toBeVisible();
+    await expect(page.getByText("Team B", { exact: true })).toBeVisible();
     await expect(page.getByText("Nico", { exact: true })).toBeVisible();
     // Rules are collapsed into the summary card; the sport and format lead it.
     await expect(page.getByTestId("rules-summary")).toContainText("Padel · Doubles");

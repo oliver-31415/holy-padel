@@ -1,11 +1,11 @@
-import { Anton_400Regular, useFonts } from "@expo-google-fonts/anton";
 import {
-  Archivo_400Regular,
-  Archivo_500Medium,
-  Archivo_600SemiBold,
-  Archivo_700Bold,
-  Archivo_800ExtraBold,
-} from "@expo-google-fonts/archivo";
+  GoogleSansFlex_400Regular,
+  GoogleSansFlex_500Medium,
+  GoogleSansFlex_600SemiBold,
+  GoogleSansFlex_700Bold,
+  GoogleSansFlex_800ExtraBold,
+  useFonts,
+} from "@expo-google-fonts/google-sans-flex";
 import { Stack } from "expo-router";
 import { hideAsync, preventAutoHideAsync } from "expo-splash-screen";
 import type { ReactNode } from "react";
@@ -34,12 +34,11 @@ export default function RootLayout(): ReactNode {
 
   // biome-ignore-start lint/style/useNamingConvention: Google Fonts registry names
   const [fontsLoaded, fontError] = useFonts({
-    Anton_400Regular,
-    Archivo_400Regular,
-    Archivo_500Medium,
-    Archivo_600SemiBold,
-    Archivo_700Bold,
-    Archivo_800ExtraBold,
+    GoogleSansFlex_400Regular,
+    GoogleSansFlex_500Medium,
+    GoogleSansFlex_600SemiBold,
+    GoogleSansFlex_700Bold,
+    GoogleSansFlex_800ExtraBold,
   });
   // biome-ignore-end lint/style/useNamingConvention: Google Fonts registry names
 
@@ -58,12 +57,12 @@ export default function RootLayout(): ReactNode {
       <View
         style={{
           flex: 1,
-          backgroundColor: colors.ink,
+          backgroundColor: colors.inverseSurface,
           justifyContent: "center",
           alignItems: "center",
         }}
       >
-        <Text style={{ color: colors.white }}>Font Error: {fontError.message}</Text>
+        <Text style={{ color: colors.inverseOnSurface }}>Font Error: {fontError.message}</Text>
       </View>
     );
   }
@@ -77,7 +76,7 @@ export default function RootLayout(): ReactNode {
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: colors.screen },
+            contentStyle: { backgroundColor: colors.background },
           }}
         >
           <Stack.Screen name="(tabs)" />
@@ -89,6 +88,7 @@ export default function RootLayout(): ReactNode {
           <Stack.Screen name="data" options={{ presentation: "modal" }} />
           <Stack.Screen name="live/[id]" options={{ gestureEnabled: false }} />
           <Stack.Screen name="match/[id]" />
+          <Stack.Screen name="edit-match/[id]" options={{ presentation: "modal" }} />
         </Stack>
       </DbProvider>
     </TamaguiProvider>

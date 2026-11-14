@@ -210,7 +210,7 @@
             "noReactNativeRawText": {
               "level": "error",
               "options": {
-                "skip": ["Display", "Body", "Overline"]
+                "skip": ["Display", "Body", "Label", "SectionTitle"]
               }
             }
           }

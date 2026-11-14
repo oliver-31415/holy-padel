@@ -14,10 +14,10 @@ import { YStack } from "tamagui";
 import { ModalHeader } from "@/components/modal-header.tsx";
 import { SportOptions } from "@/components/new-match-parts.tsx";
 import { SegmentedRow } from "@/components/segmented-row.tsx";
-import { Body } from "@/components/ui.tsx";
+import { Label } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { goBack } from "@/lib/navigation.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 /**
  * Your default match setup — prefills every new match. Every tap applies
@@ -44,15 +44,17 @@ export default function EditDefaultsScreen(): ReactNode {
   return (
     <YStack
       flex={1}
-      backgroundColor={colors.screen}
-      paddingTop={insets.top + 14}
+      backgroundColor={colors.background}
+      paddingTop={insets.top + 8}
       paddingBottom={insets.bottom + 16}
-      gap={14}
+      gap={8}
     >
-      <ModalHeader title="DEFAULTS" onClose={goBack} label="Done" />
+      <YStack paddingHorizontal={16}>
+        <ModalHeader title="Match defaults" onClose={goBack} label="Done" />
+      </YStack>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, gap: 14, paddingBottom: 20 }}>
-        <YStack backgroundColor={colors.card} borderRadius={20} padding={16} gap={13}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, gap: 12, paddingBottom: 24 }}>
+        <YStack backgroundColor={colors.card} borderRadius={28} padding={20} gap={16}>
           <SegmentedRow
             label="Format"
             options={[
@@ -135,9 +137,9 @@ export default function EditDefaultsScreen(): ReactNode {
           />
         </YStack>
 
-        <Body fontSize={11.5} fontWeight="600" color={textAlpha(0.45)}>
+        <Label paddingHorizontal={8}>
           These options prefill every new match. Changes save instantly.
-        </Body>
+        </Label>
       </ScrollView>
     </YStack>
   );

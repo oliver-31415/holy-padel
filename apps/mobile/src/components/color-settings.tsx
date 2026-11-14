@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 import { Pressable } from "react-native";
 import { View, XStack, YStack } from "tamagui";
-import { Body } from "@/components/ui.tsx";
+import { Icon } from "@/components/icons.tsx";
+import { Body, Label } from "@/components/ui.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
 import { loadColorSetting } from "@/theme/color-setting.ts";
-import { ACCENT_CHOICES, colors, TEAM_B_CHOICES, textAlpha } from "@/theme/colors.ts";
+import { ACCENT_CHOICES, colors, TEAM_B_CHOICES } from "@/theme/colors.ts";
 import { useSetColorSetting } from "@/theme/theme.tsx";
 
-/** One round swatch; the picked one gets a ring in the text colour. */
+/** One swatch: round at rest, a soft square with a check when picked. */
 function Swatch({
   color,
   label,
@@ -33,15 +34,14 @@ function Swatch({
       style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
       <View
-        width={34}
-        height={34}
-        borderRadius={17}
-        borderWidth={2.5}
-        borderColor={selected ? colors.text : "transparent"}
+        width={48}
+        height={48}
+        borderRadius={selected ? 16 : 24}
+        backgroundColor={color}
         alignItems="center"
         justifyContent="center"
       >
-        <View width={24} height={24} borderRadius={12} backgroundColor={color} />
+        {selected ? <Icon name="check" color={colors.onSport} /> : null}
       </View>
     </Pressable>
   );
@@ -56,10 +56,8 @@ function SwatchRow({
 }): ReactNode {
   return (
     <YStack gap={8}>
-      <Body fontSize={13} fontWeight="700">
-        {label}
-      </Body>
-      <XStack gap={6} flexWrap="wrap">
+      <Body fontSize={16}>{label}</Body>
+      <XStack gap={8} flexWrap="wrap">
         {children}
       </XStack>
     </YStack>
@@ -77,7 +75,7 @@ export function ColorSettings(): ReactNode {
   const accent = setting.accent ?? "orange";
   const teamB = setting.teamB ?? "violet";
   return (
-    <YStack gap={14}>
+    <YStack gap={16}>
       <SwatchRow label="Highlight colour">
         {ACCENT_CHOICES.map((choice) => (
           <Swatch
@@ -106,9 +104,10 @@ export function ColorSettings(): ReactNode {
           />
         ))}
       </SwatchRow>
-      <Body fontSize={11} fontWeight="600" color={textAlpha(0.45)}>
-        Highlight marks buttons, the serve and your wins; Team B colours the other side.
-      </Body>
+      <Label lineHeight={16}>
+        The whole app is tinted from the highlight colour — buttons, the serve and your wins. Team B
+        colours the other side.
+      </Label>
     </YStack>
   );
 }

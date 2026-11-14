@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { TextInput } from "react-native";
 import { View, XStack } from "tamagui";
-import { Plus } from "@/components/icons.tsx";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { Icon } from "@/components/icons.tsx";
+import { colors } from "@/theme/colors.ts";
 
-/** The dashed "New player" input row — shared by the picker sheet and the players card. */
+/** The "New player" input row — shared by the picker sheet and the players card. */
 export function NewPlayerRow({
   onCreate,
   onCreated,
@@ -17,29 +17,27 @@ export function NewPlayerRow({
 }): ReactNode {
   const [newName, setNewName] = useState("");
   return (
-    <XStack alignItems="center" gap={10} paddingVertical={11} paddingHorizontal={14}>
+    <XStack alignItems="center" gap={16} paddingVertical={10} paddingHorizontal={16}>
       <View
-        width={36}
-        height={36}
-        borderRadius={18}
-        borderWidth={1.5}
-        borderColor={textAlpha(0.3)}
-        borderStyle="dashed"
+        width={40}
+        height={40}
+        borderRadius={20}
+        backgroundColor={colors.secondaryContainer}
         alignItems="center"
         justifyContent="center"
       >
-        <Plus size={14} color={textAlpha(0.45)} strokeWidth={2.6} />
+        <Icon name="add" color={colors.onSecondaryContainer} />
       </View>
       <TextInput
         style={{
           flex: 1,
-          fontSize: 14,
-          fontFamily: "Archivo_700Bold",
-          color: colors.text,
+          fontSize: 16,
+          fontFamily: "GoogleSansFlex_500Medium",
+          color: colors.onSurface,
           padding: 0,
         }}
         placeholder={placeholder}
-        placeholderTextColor={textAlpha(0.55)}
+        placeholderTextColor={colors.onSurfaceVariant}
         value={newName}
         onChangeText={setNewName}
         onSubmitEditing={() => {

@@ -16,11 +16,11 @@ test.describe("stats tab", () => {
   test("orders big points, then rallies, then people, then effort", async ({ page }) => {
     await gotoStats(page);
     const titles = [
-      "UNDER PRESSURE",
-      "LONG OR SHORT RALLIES",
-      "PARTNERS & RIVALS",
-      "EFFORT VS RESULTS",
-      "TRENDS",
+      "Under pressure",
+      "Long or short rallies",
+      "Partners & rivals",
+      "Effort vs results",
+      "Trends",
     ];
     const tops: number[] = [];
     for (const title of titles) {
@@ -44,14 +44,14 @@ test.describe("stats tab", () => {
     await expect(page.getByTestId("rival-marta")).toContainText("4–3");
     await expect(page.getByText("BEST WITH")).toBeVisible();
 
-    await page.getByRole("button", { name: /SHOW ALL/u }).click();
+    await page.getByRole("button", { name: /Show all/u }).click();
     await expect(page.getByRole("button", { name: "SHOW LESS" })).toBeVisible();
   });
 
   test("compares effort with results and shows the watch trend", async ({ page }) => {
     await gotoStats(page);
     await expect(page.getByTestId("effort-card")).toContainText("bpm and up");
-    await expect(page.getByTestId("trend-card")).toContainText("LAST 4 TRACKED");
+    await expect(page.getByTestId("trend-card")).toContainText("Last 4 tracked");
     await page.getByTestId("trend-steps").click();
     await expect(page.getByTestId("trend-steps")).toHaveAttribute("aria-selected", "true");
   });
@@ -80,15 +80,15 @@ test.describe("match page insights", () => {
     await page.goto("/match/seed-12");
     await expect(page.getByTestId("key-moments")).toBeVisible({ timeout: 90_000 });
     await expect(page.getByTestId("key-moments")).toContainText("break points");
-    await expect(page.getByTestId("effort-strip")).toContainText("HARDEST");
-    await expect(page.getByTestId("match-zones")).toContainText("MOSTLY");
+    await expect(page.getByTestId("effort-strip")).toContainText("Hardest");
+    await expect(page.getByTestId("match-zones")).toContainText("Mostly");
   });
 
   test("times the match's rallies and splits them long and short", async ({ page }) => {
     await page.goto("/match/seed-01");
     const rallies = page.getByTestId("match-rallies");
     await expect(rallies).toBeVisible({ timeout: 90_000 });
-    await expect(rallies).toContainText("LONGEST");
+    await expect(rallies).toContainText("Longest");
     await expect(rallies.getByTestId("rally-strip")).toBeVisible();
     await expect(rallies.getByTestId("rallies-short")).toContainText(/\d+s or less/u);
   });

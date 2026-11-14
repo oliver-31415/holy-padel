@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { XStack, YStack } from "tamagui";
 import { CardHeader, ShareRow, ShareTile } from "@/components/insight-parts.tsx";
-import { Body, Card, Display } from "@/components/ui.tsx";
+import { Body, Card, Display, Label } from "@/components/ui.tsx";
 import type { Clutch, Tally } from "@/lib/clutch.ts";
 import { percentOf } from "@/lib/clutch.ts";
 import type { Sport } from "@/lib/insights.ts";
-import { textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 function detail(tally: Tally): string {
   return `${String(tally.won)} of ${String(tally.of)}`;
@@ -33,16 +33,16 @@ function Turnarounds({
   readonly muted: boolean;
 }): ReactNode {
   return (
-    <XStack alignItems="center" gap={10}>
+    <XStack alignItems="center" gap={12}>
       <Display
-        fontSize={20}
-        width={28}
+        fontSize={22}
+        width={32}
         textAlign="center"
-        {...(muted ? { color: textAlpha(0.5) } : {})}
+        {...(muted ? { color: colors.onSurfaceVariant } : {})}
       >
         {String(count)}
       </Display>
-      <Body flex={1} fontSize={13} fontWeight="700">
+      <Body flex={1} fontSize={14}>
         {words}
       </Body>
     </XStack>
@@ -79,33 +79,25 @@ export function ClutchCard({
   ].filter((row) => row.tally.of > 0);
   const words = turnaroundWords(sport);
   return (
-    <Card
-      borderRadius={20}
-      paddingVertical={15}
-      paddingHorizontal={17}
-      gap={14}
-      testID="clutch-card"
-    >
-      <CardHeader title="UNDER PRESSURE" />
+    <Card padding={20} gap={16} testID="clutch-card">
+      <CardHeader title="Under pressure" />
       <XStack gap={8}>
         <ShareTile
           tally={clutch.closing}
-          label="CLOSING OUT"
+          label="Closing out"
           explain="When you're a point away"
           testID="clutch-closing"
         />
         <ShareTile
           tally={clutch.saving}
-          label="SAVING"
+          label="Saving"
           explain="When they're a point away"
           testID="clutch-saving"
         />
       </XStack>
-      <Body fontSize={11.5} fontWeight="600" color={textAlpha(0.5)}>
-        {`For comparison, you win ${String(overall)}% of all points.`}
-      </Body>
+      <Label>{`For comparison, you win ${String(overall)}% of all points.`}</Label>
       {rows.length === 0 ? null : (
-        <YStack gap={12}>
+        <YStack gap={16}>
           {rows.map((row) => (
             <ShareRow
               key={row.id}

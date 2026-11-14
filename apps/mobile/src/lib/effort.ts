@@ -10,11 +10,11 @@ export interface Zone {
 
 /** The five classic zones, by share of max heart rate. Zone 1 also takes anything lower. */
 export const ZONES: readonly Zone[] = [
-  { label: "EASY", from: 0.5 },
-  { label: "LIGHT", from: 0.6 },
-  { label: "STEADY", from: 0.7 },
-  { label: "HARD", from: 0.8 },
-  { label: "MAX", from: 0.9 },
+  { label: "Easy", from: 0.5 },
+  { label: "Light", from: 0.6 },
+  { label: "Steady", from: 0.7 },
+  { label: "Hard", from: 0.8 },
+  { label: "Max", from: 0.9 },
 ];
 
 /** Readings further apart than this only count this long — a dropout isn't time in a zone. */

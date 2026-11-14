@@ -33,7 +33,7 @@ import {
   leadSegments,
   toneOf,
 } from "@/lib/snake-geometry.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 const CHART_HEIGHT = 176;
 const PAD_X = 12;
@@ -70,17 +70,17 @@ interface Geometry {
 /** Team A is the accent, team B its runtime colour, and level is a neutral ink. */
 function toneColor(tone: LeadTone): string {
   if (tone === "A") {
-    return colors.accent;
+    return colors.primary;
   }
-  return tone === "B" ? colors.teamB : textAlpha(0.35);
+  return tone === "B" ? colors.tertiary : colors.onSurfaceVariant;
 }
 
 /** The final score's label: the leader's colour, readable on the card. */
 function scoreFill(tone: LeadTone): string {
   if (tone === "A") {
-    return colors.accentOnCard;
+    return colors.primary;
   }
-  return tone === "B" ? colors.teamB : textAlpha(0.6);
+  return tone === "B" ? colors.tertiary : colors.onSurfaceVariant;
 }
 
 /**
@@ -128,7 +128,7 @@ function BpmAxis({
             y1={yOf(tick)}
             x2={plotRight}
             y2={yOf(tick)}
-            stroke={colors.danger}
+            stroke={colors.error}
             strokeOpacity={0.12}
             strokeWidth={1}
             strokeDasharray="1 4"
@@ -137,8 +137,8 @@ function BpmAxis({
             x={width - 4}
             y={yOf(tick) + 3}
             fontSize={9}
-            fontWeight="700"
-            fill={colors.danger}
+            fontWeight="500"
+            fill={colors.error}
             fillOpacity={0.8}
             textAnchor="end"
           >
@@ -150,12 +150,12 @@ function BpmAxis({
         x={width - 4}
         y={PAD_TOP - 6}
         fontSize={8}
-        fontWeight="800"
-        fill={colors.danger}
+        fontWeight="600"
+        fill={colors.error}
         fillOpacity={0.8}
         textAnchor="end"
       >
-        BPM
+        bpm
       </Text>
     </>
   );
@@ -188,8 +188,8 @@ function HeartRateLayer({
       <BpmAxis scale={scale} yOf={yOf} plotRight={plotRight} width={width} />
       <Defs>
         <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={colors.danger} stopOpacity={0.16} />
-          <Stop offset="1" stopColor={colors.danger} stopOpacity={0} />
+          <Stop offset="0" stopColor={colors.error} stopOpacity={0.16} />
+          <Stop offset="1" stopColor={colors.error} stopOpacity={0} />
         </LinearGradient>
       </Defs>
       {spans.map((span) => {
@@ -207,7 +207,7 @@ function HeartRateLayer({
               cx={first.x}
               cy={first.y}
               r={2.5}
-              fill={colors.danger}
+              fill={colors.error}
               fillOpacity={0.85}
             />
           );
@@ -219,7 +219,7 @@ function HeartRateLayer({
               key={key}
               d={curve}
               fill="none"
-              stroke={colors.danger}
+              stroke={colors.error}
               strokeWidth={1.5}
               strokeOpacity={0.35}
               strokeDasharray="3 3"
@@ -236,7 +236,7 @@ function HeartRateLayer({
             <Path
               d={curve}
               fill="none"
-              stroke={colors.danger}
+              stroke={colors.error}
               strokeWidth={1.75}
               strokeOpacity={0.85}
               strokeLinecap="round"
@@ -301,7 +301,14 @@ function LeadLayer({
           <Path key={`${path.key}f`} d={path.area} fill={toneColor(path.tone)} fillOpacity={0.1} />
         ),
       )}
-      <Line x1={PAD_X} y1={zeroY} x2={endX} y2={zeroY} stroke={textAlpha(0.18)} strokeWidth={1} />
+      <Line
+        x1={PAD_X}
+        y1={zeroY}
+        x2={endX}
+        y2={zeroY}
+        stroke={colors.outlineVariant}
+        strokeWidth={1}
+      />
       {paths.map((path) => (
         <Path
           key={path.key}
@@ -344,7 +351,7 @@ function LeadLayer({
             x={slot.x}
             y={slot.y}
             fontSize={10}
-            fontWeight="800"
+            fontWeight="600"
             fill={scoreFill(endTone)}
             textAnchor="end"
           >
@@ -373,7 +380,7 @@ function LegendDot({
         borderRadius={square === true ? 1 : 4}
         backgroundColor={color}
       />
-      <Body fontSize={9.5} fontWeight="700" color={textAlpha(0.5)}>
+      <Body fontSize={11} fontWeight="500" color={colors.onSurfaceVariant}>
         {label}
       </Body>
     </XStack>
@@ -509,7 +516,7 @@ export function SnakeChart({
                 y1={PAD_TOP}
                 x2={cursor.x}
                 y2={PLOT_BOTTOM}
-                stroke={textAlpha(0.45)}
+                stroke={colors.onSurfaceVariant}
                 strokeWidth={1}
               />
               <Circle
@@ -517,20 +524,26 @@ export function SnakeChart({
                 cy={cursor.y}
                 r={CURSOR_DOT}
                 fill={colors.card}
-                stroke={colors.text}
+                stroke={colors.onSurface}
                 strokeWidth={2}
               />
             </G>
           )}
-          <Text x={PAD_X} y={CHART_HEIGHT - 6} fontSize={9} fontWeight="700" fill={textAlpha(0.35)}>
+          <Text
+            x={PAD_X}
+            y={CHART_HEIGHT - 6}
+            fontSize={9}
+            fontWeight="500"
+            fill={colors.onSurfaceVariant}
+          >
             0:00
           </Text>
           <Text
             x={endX}
             y={CHART_HEIGHT - 6}
             fontSize={9}
-            fontWeight="700"
-            fill={textAlpha(0.35)}
+            fontWeight="500"
+            fill={colors.onSurfaceVariant}
             textAnchor="end"
           >
             {clockLabel(endedAt - startedAt)}
@@ -549,16 +562,16 @@ export function SnakeChart({
       ) : null}
       <ScrubReadoutRow readout={readout} />
       <XStack alignItems="center" justifyContent="center" flexWrap="wrap" gap={14} marginTop={4}>
-        <LegendDot color={colors.accent} label="TEAM A AHEAD" />
-        <LegendDot color={colors.teamB} label="TEAM B AHEAD" />
+        <LegendDot color={colors.primary} label="Team A ahead" />
+        <LegendDot color={colors.tertiary} label="Team B ahead" />
         {hasHandOuts ? (
           <LegendDot
-            color={colors.text}
-            label={pickleball === true ? "SIDE-OUT · NO POINT" : "HAND-OUT · NO POINT"}
+            color={colors.onSurface}
+            label={pickleball === true ? "Side-out · no point" : "Hand-out · no point"}
             square={true}
           />
         ) : null}
-        {scale === undefined ? null : <LegendDot color={colors.danger} label="HEART RATE" />}
+        {scale === undefined ? null : <LegendDot color={colors.error} label="Heart rate" />}
       </XStack>
     </View>
   );

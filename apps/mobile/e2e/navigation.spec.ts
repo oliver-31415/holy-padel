@@ -12,7 +12,7 @@ test.describe("navigation regressions", () => {
     await winLoveGames(page, "A", 1);
     await expect(page.getByText("MATCH WON")).toBeVisible();
 
-    await page.getByRole("button", { name: "DONE", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
     // The error toast must not appear.
     await expect(page.getByText(/POP_TO_TOP/u)).toHaveCount(0);
@@ -57,7 +57,7 @@ test.describe("navigation regressions", () => {
     await score(page, "A", 1);
     await winLoveGames(page, "A", 1);
     await expect(page.getByText("MATCH WON")).toBeVisible();
-    await page.getByRole("button", { name: "DONE", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
     await expect(page.getByText(/POP_TO_TOP/u)).toHaveCount(0);
   });

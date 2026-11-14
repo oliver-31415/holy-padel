@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { XStack } from "tamagui";
-import { Body, LiveDot, Pill } from "@/components/ui.tsx";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { Icon } from "@/components/icons.tsx";
+import { Label, LiveDot } from "@/components/ui.tsx";
+import { colors } from "@/theme/colors.ts";
 import type { WatchLink } from "@/watch/use-watch-connection.ts";
 
 /**
@@ -37,9 +38,7 @@ export function WatchSyncLine({
   return (
     <XStack alignItems="center" justifyContent="center" gap={6}>
       {showDot ? <LiveDot size={6} /> : null}
-      <Body fontSize={11} fontWeight="600" color={textAlpha(0.45)}>
-        {syncText(link, paused)}
-      </Body>
+      <Label textAlign="center">{syncText(link, paused)}</Label>
     </XStack>
   );
 }
@@ -48,43 +47,41 @@ export function WatchSyncLine({
 export function SavedIndicator(): ReactNode {
   return (
     <XStack alignItems="center" justifyContent="center" gap={5} testID="saved-indicator">
-      <Body fontSize={11} fontWeight="700" color={colors.accentOnCard}>
-        ✓
-      </Body>
-      <Body fontSize={11} fontWeight="700" color={textAlpha(0.45)}>
-        Saved
-      </Body>
+      <Icon name="check" size={16} color={colors.primary} />
+      <Label>Saved</Label>
     </XStack>
   );
 }
 
-/** The home screen's header pill. */
+/** The home screen's header indicator: a tonal watch icon, muted when offline. */
 export function WatchPill({ link }: { readonly link: WatchLink }): ReactNode {
   if (!link.available || link.count === null) {
     return null;
   }
-  if (link.count === 0) {
-    return (
-      <Pill borderWidth={1} borderColor={textAlpha(0.1)} paddingVertical={7} paddingHorizontal={12}>
-        <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.35)}>
-          WATCH OFFLINE
-        </Body>
-      </Pill>
-    );
-  }
-  const label = link.count === 1 ? "WATCH CONNECTED" : `${String(link.count)} WATCHES CONNECTED`;
+  const online = link.count > 0;
+  const label = online
+    ? link.count === 1
+      ? "Watch connected"
+      : `${String(link.count)} watches connected`
+    : "Watch offline";
   return (
-    <Pill
-      borderWidth={1}
-      borderColor={textAlpha(0.14)}
-      paddingVertical={7}
+    <XStack
+      height={40}
       paddingHorizontal={12}
       gap={6}
+      borderRadius={20}
+      alignItems="center"
+      backgroundColor={online ? colors.secondaryContainer : colors.surfaceContainerHighest}
+      aria-label={label}
     >
-      <LiveDot size={6} />
-      <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.55)}>
-        {label}
-      </Body>
-    </Pill>
+      <Icon
+        name={online ? "watch" : "watchOff"}
+        size={20}
+        color={online ? colors.onSecondaryContainer : colors.onSurfaceVariant}
+      />
+      <Label color={online ? colors.onSecondaryContainer : colors.onSurfaceVariant}>
+        {online ? (link.count === 1 ? "Connected" : `${String(link.count)} connected`) : "Offline"}
+      </Label>
+    </XStack>
   );
 }

@@ -38,7 +38,6 @@ interface MatchPlan {
   readonly partner: string;
   readonly opponents: readonly [string, string];
   readonly sets: readonly SetPlan[];
-  readonly court?: string;
   readonly location?: string;
   readonly config?: Partial<MatchConfig>;
 }
@@ -144,7 +143,6 @@ const FINISHED: readonly MatchPlan[] = [
     partner: "javi",
     opponents: ["marta", "leo"],
     sets: [{ games: [6, 3] }, { games: [7, 6], tieBreak: [7, 4] }],
-    court: "Court 4",
   },
   {
     id: "seed-11",
@@ -159,7 +157,6 @@ const FINISHED: readonly MatchPlan[] = [
     partner: "javi",
     opponents: ["ana", "pablo"],
     sets: [{ games: [7, 5] }, { games: [2, 6] }, { games: [10, 7], superTieBreak: true }],
-    court: "Court 2",
   },
   {
     id: "seed-09",
@@ -167,7 +164,6 @@ const FINISHED: readonly MatchPlan[] = [
     partner: "javi",
     opponents: ["carla", "hugo"],
     sets: [{ games: [6, 2] }, { games: [6, 4] }],
-    court: "Court 1",
   },
   {
     id: "seed-08",
@@ -175,7 +171,6 @@ const FINISHED: readonly MatchPlan[] = [
     partner: "javi",
     opponents: ["marta", "leo"],
     sets: [{ games: [6, 4] }, { games: [7, 5] }],
-    court: "Court 4",
   },
   {
     id: "seed-07",
@@ -183,7 +178,6 @@ const FINISHED: readonly MatchPlan[] = [
     partner: "ana",
     opponents: ["marta", "leo"],
     sets: [{ games: [3, 6] }, { games: [4, 6] }],
-    court: "Court 3",
   },
   {
     id: "seed-06",
@@ -191,7 +185,6 @@ const FINISHED: readonly MatchPlan[] = [
     partner: "javi",
     opponents: ["ana", "pablo"],
     sets: [{ games: [6, 3] }, { games: [6, 4] }],
-    court: "Court 2",
   },
   {
     id: "seed-05",
@@ -199,7 +192,6 @@ const FINISHED: readonly MatchPlan[] = [
     partner: "javi",
     opponents: ["marta", "leo"],
     sets: [{ games: [7, 6], tieBreak: [7, 5] }, { games: [6, 4] }],
-    court: "Court 4",
   },
   {
     id: "seed-04",
@@ -246,7 +238,6 @@ function seedFinishedMatch(driver: SqlDriver, plan: MatchPlan, now: number): voi
     config,
     players,
     startedAt,
-    ...(plan.court === undefined ? {} : { court: plan.court }),
     location: plan.location ?? "Club Padel Norte",
   };
   createMatch(driver, match);
@@ -299,7 +290,6 @@ function seedLiveMatch(driver: SqlDriver, now: number): void {
     id: "seed-live",
     config: DEFAULT_CONFIG,
     players: { A: ["nico", "javi"], B: ["marta", "leo"] },
-    court: "Court 4",
     location: "Club Padel Norte",
     startedAt,
   });

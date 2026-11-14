@@ -1,23 +1,12 @@
 import type { CourtSide } from "@holy-padel/db";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { TextInput } from "react-native";
 import { XStack, YStack } from "tamagui";
-import { Body, Display, Overline } from "@/components/ui.tsx";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { Button, TextField } from "@/components/controls.tsx";
+import { Body, Label } from "@/components/ui.tsx";
+import { colors } from "@/theme/colors.ts";
 
 const SIDES: readonly CourtSide[] = ["left", "right"];
-
-/** Built per render: a module-level object would freeze the light palette. */
-function inputStyle() {
-  return {
-    fontSize: 17,
-    fontFamily: "Archivo_700Bold",
-    color: colors.text,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  } as const;
-}
 
 /**
  * The name/club/side form shared by the owner's edit-profile screen and the
@@ -40,60 +29,55 @@ export function EditPlayerForm({
 
   return (
     <>
-      <YStack gap={14}>
-        <Field label="NAME">
-          <TextInput
-            style={inputStyle()}
-            value={name}
-            onChangeText={setName}
-            placeholder="Player name"
-            placeholderTextColor={textAlpha(0.4)}
-            autoCapitalize="words"
-            testID="edit-name"
-          />
-        </Field>
-        <Field label="CLUB">
-          <TextInput
-            style={inputStyle()}
-            value={club}
-            onChangeText={setClub}
-            placeholder="Club (optional)"
-            placeholderTextColor={textAlpha(0.4)}
-            testID="edit-club"
-          />
-        </Field>
-
-        <YStack gap={7}>
-          <Overline color={textAlpha(0.45)}>PREFERRED SIDE</Overline>
-          <XStack gap={10}>
-            {SIDES.map((option) => {
+      <YStack gap={16}>
+        <TextField
+          label="Name"
+          value={name}
+          onChangeText={setName}
+          placeholder="Player name"
+          autoCapitalize="words"
+          testID="edit-name"
+        />
+        <TextField
+          label="Club"
+          value={club}
+          onChangeText={setClub}
+          placeholder="Club (optional)"
+          testID="edit-club"
+        />
+        <YStack gap={8}>
+          <Label>Preferred side</Label>
+          <XStack gap={2}>
+            {SIDES.map((option, index) => {
               const selected = side === option;
+              const inner = selected ? 28 : 8;
               return (
                 <XStack
                   key={option}
                   flex={1}
-                  height={52}
-                  borderRadius={16}
+                  height={56}
+                  borderTopLeftRadius={index === 0 ? 28 : inner}
+                  borderBottomLeftRadius={index === 0 ? 28 : inner}
+                  borderTopRightRadius={index === 0 ? inner : 28}
+                  borderBottomRightRadius={index === 0 ? inner : 28}
                   alignItems="center"
                   justifyContent="center"
-                  backgroundColor={selected ? colors.accent : colors.toggle}
-                  borderWidth={1}
-                  borderColor={selected ? colors.accent : textAlpha(0.12)}
+                  backgroundColor={selected ? colors.primary : colors.surfaceContainerHighest}
                   pressStyle={{ opacity: 0.85 }}
                   role="button"
                   aria-label={`Play ${option} side`}
+                  aria-pressed={selected}
                   onPress={() => {
                     setSide(option);
                   }}
                   testID={`side-${option}`}
                 >
                   <Body
-                    fontSize={13}
-                    fontWeight="800"
-                    letterSpacing={1.4}
-                    color={selected ? colors.onAccent : textAlpha(0.55)}
+                    fontSize={16}
+                    fontWeight="500"
+                    color={selected ? colors.onPrimary : colors.onSurfaceVariant}
                   >
-                    {option.toUpperCase()}
+                    {option === "left" ? "Left" : "Right"}
                   </Body>
                 </XStack>
               );
@@ -104,49 +88,18 @@ export function EditPlayerForm({
 
       <XStack flex={1} />
 
-      <XStack
-        height={58}
-        borderRadius={18}
-        backgroundColor={colors.accent}
-        alignItems="center"
-        justifyContent="center"
-        pressStyle={{ opacity: 0.9 }}
-        opacity={name.trim() === "" ? 0.5 : 1}
-        role="button"
+      {/* Not `disabled`: an empty name leaves the tap a no-op, as before. */}
+      <Button
+        label="Save"
         aria-label="Save profile"
+        opacity={name.trim() === "" ? 0.5 : 1}
         onPress={() => {
           if (name.trim() !== "") {
             onSave(name.trim(), club.trim(), side);
           }
         }}
         testID="save-profile"
-      >
-        <Display fontSize={16} color={colors.onAccent} letterSpacing={1}>
-          SAVE
-        </Display>
-      </XStack>
+      />
     </>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  readonly label: string;
-  readonly children: ReactNode;
-}): ReactNode {
-  return (
-    <YStack gap={7}>
-      <Overline color={textAlpha(0.45)}>{label}</Overline>
-      <YStack
-        backgroundColor={colors.card}
-        borderRadius={16}
-        borderWidth={1}
-        borderColor={textAlpha(0.08)}
-      >
-        {children}
-      </YStack>
-    </YStack>
   );
 }

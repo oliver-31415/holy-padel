@@ -1,8 +1,8 @@
 import type { TeamId } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
 import { XStack, YStack } from "tamagui";
-import { Avatar, Body, Card, Display, Pill } from "@/components/ui.tsx";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { Avatar, Body, Card, Label } from "@/components/ui.tsx";
+import { colors } from "@/theme/colors.ts";
 
 /** One player disc + name; an empty slot keeps the picker's "Pick a player". */
 function FaceoffPlayer({
@@ -18,16 +18,28 @@ function FaceoffPlayer({
   return (
     <YStack alignItems="center" gap={6}>
       <Avatar
-        letter={empty ? "?" : name.charAt(0)}
-        size={44}
-        background={teamA ? colors.ink : colors.teamB}
-        color={teamA ? colors.accent : colors.white}
+        letter={empty ? "+" : name.charAt(0)}
+        size={48}
+        background={
+          empty
+            ? colors.surfaceContainerHighest
+            : teamA
+              ? colors.primaryContainer
+              : colors.tertiaryContainer
+        }
+        color={
+          empty
+            ? colors.onSurfaceVariant
+            : teamA
+              ? colors.onPrimaryContainer
+              : colors.onTertiaryContainer
+        }
       />
       <Body
         fontSize={14}
-        fontWeight="700"
+        fontWeight="500"
         numberOfLines={1}
-        color={empty ? textAlpha(0.35) : colors.text}
+        color={empty ? colors.onSurfaceVariant : colors.onSurface}
       >
         {displayName}
       </Body>
@@ -35,7 +47,7 @@ function FaceoffPlayer({
   );
 }
 
-/** One side of the face-off — its team pill over the stacked player discs. */
+/** One side of the face-off — its team label over the stacked player discs. */
 function FaceoffSide({
   team,
   names,
@@ -49,30 +61,20 @@ function FaceoffSide({
   return (
     <YStack
       flex={1}
-      backgroundColor={colors.row}
-      borderRadius={16}
-      paddingVertical={14}
-      paddingHorizontal={10}
+      backgroundColor={colors.cardInset}
+      borderRadius={20}
+      paddingVertical={16}
+      paddingHorizontal={8}
       gap={12}
-      pressStyle={{ opacity: 0.92 }}
+      pressStyle={{ opacity: 0.85, borderRadius: 12 }}
       role="button"
       onPress={onPress}
     >
-      <Pill
+      <Label
         alignSelf="center"
-        backgroundColor={teamA ? colors.accent : colors.teamB}
-        paddingVertical={4}
-        paddingHorizontal={10}
-      >
-        <Body
-          fontSize={10}
-          fontWeight="800"
-          letterSpacing={1.5}
-          color={teamA ? colors.onAccent : colors.white}
-        >
-          {`TEAM ${team}`}
-        </Body>
-      </Pill>
+        fontWeight="600"
+        color={teamA ? colors.primary : colors.tertiary}
+      >{`Team ${team}`}</Label>
       <YStack gap={12}>
         {names.map((name, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: the two slots are positional by design
@@ -87,9 +89,7 @@ function FaceoffSide({
 function Versus(): ReactNode {
   return (
     <YStack justifyContent="center" paddingHorizontal={8}>
-      <Display fontSize={16} color={textAlpha(0.35)}>
-        VS
-      </Display>
+      <Label>vs</Label>
     </YStack>
   );
 }
@@ -115,7 +115,7 @@ export function TeamFaceoff({
   const one = (names: readonly string[]): readonly string[] =>
     format === "singles" ? [names[0] ?? ""] : names;
   return (
-    <Card borderRadius={20} padding={14}>
+    <Card padding={12}>
       <XStack alignItems="stretch" gap={4}>
         <FaceoffSide team="A" names={one(teamANames)} onPress={onPickTeamA} />
         <Versus />

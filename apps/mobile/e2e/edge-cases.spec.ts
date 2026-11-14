@@ -50,7 +50,7 @@ test.describe("input edges", () => {
     await page.goto("/matches");
     await expect(page.getByText("14 stored locally")).toBeVisible({ timeout: 90_000 });
     // The seeded match was saved, not orphaned: only the new one is live.
-    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(1);
+    await expect(page.getByText("Live", { exact: true })).toHaveCount(1);
   });
 
   test("a tap racing the final point cannot poison the match", async ({ page }) => {

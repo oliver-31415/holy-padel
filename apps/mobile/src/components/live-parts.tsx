@@ -1,80 +1,54 @@
 import type { MatchSnapshot } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
 import { View, XStack, YStack } from "tamagui";
-import { Pause, Play, Square, Undo } from "@/components/icons.tsx";
-import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
-import { currentSetScore } from "@/lib/format.ts";
-import { accentAlpha, colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { Button } from "@/components/controls.tsx";
+import { Icon } from "@/components/icons.tsx";
+import { Body, Display, Label, LiveDot, Pill } from "@/components/ui.tsx";
+import { currentSetScore, setTitle } from "@/lib/format.ts";
+import { colors } from "@/theme/colors.ts";
 
 function SetChip({
   label,
   score,
   state,
+  testId,
 }: {
   readonly label: string;
   readonly score: string;
   readonly state: "done" | "current" | "future";
+  readonly testId: string;
 }): ReactNode {
-  const testId = `set-chip-${label.toLowerCase().replaceAll(" ", "-")}`;
-  if (state === "done") {
-    return (
-      <YStack
-        flex={1}
-        backgroundColor={colors.ink}
-        borderRadius={14}
-        paddingVertical={9}
-        alignItems="center"
-      >
-        <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={whiteAlpha(0.5)}>
-          {label}
-        </Body>
-        <Display fontSize={20} color={colors.white} marginTop={2} testID={testId}>
-          {score}
-        </Display>
-      </YStack>
-    );
-  }
-  if (state === "current") {
-    return (
-      <YStack
-        flex={1}
-        backgroundColor={colors.card}
-        borderWidth={2}
-        borderColor={colors.accent}
-        borderRadius={14}
-        paddingVertical={7}
-        alignItems="center"
-        boxShadow="0 2px 10px rgba(14, 17, 22, 0.06)"
-      >
-        <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={colors.accentOnCard}>
-          {label}
-        </Body>
-        <Display fontSize={20} marginTop={2} testID={testId}>
-          {score}
-        </Display>
-      </YStack>
-    );
-  }
+  // Finished sets recede, the set in play is the tonal fill, the rest outlines.
+  const tone = {
+    done: { background: colors.surfaceContainerHighest, content: colors.onSurface },
+    current: { background: colors.secondaryContainer, content: colors.onSecondaryContainer },
+    future: { background: "transparent", content: colors.onSurfaceVariant },
+  }[state];
+  const shown = state === "future" ? "–" : score;
   return (
     <YStack
       flex={1}
+      backgroundColor={tone.background}
       borderWidth={1}
-      borderColor={textAlpha(0.14)}
-      borderRadius={14}
+      borderColor={state === "future" ? colors.outlineVariant : "transparent"}
+      borderRadius={state === "current" ? 28 : 16}
       paddingVertical={8}
       alignItems="center"
     >
-      <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={textAlpha(0.35)}>
-        {label}
-      </Body>
-      <Display fontSize={20} color={textAlpha(0.25)} marginTop={2} testID={testId}>
-        –
+      <Label color={tone.content}>{label}</Label>
+      <Display
+        fontSize={20}
+        color={tone.content}
+        opacity={state === "future" ? 0.5 : 1}
+        testID={testId}
+      >
+        {shown}
       </Display>
     </YStack>
   );
 }
 
-/** The SET/GAME chip row across the top of the live screen. */
+/** The set/game chip row across the top of the live screen. */
 export function SetChips({
   match,
   snapshot,
@@ -83,17 +57,21 @@ export function SetChips({
   readonly snapshot: MatchSnapshot;
 }): ReactNode {
   const chips: ReactNode[] = [];
-  const isGameBased = match.config.sport === "squash" || match.config.sport === "pickleball";
+  const unit =
+    match.config.sport === "squash" || match.config.sport === "pickleball" ? "game" : "set";
   for (let setIndex = 0; setIndex < match.config.bestOf; setIndex += 1) {
     const completed = snapshot.completedSets[setIndex];
-    const setLabel = isGameBased ? `GAME ${String(setIndex + 1)}` : `SET ${String(setIndex + 1)}`;
+    // A one-set match shows "Set", not "Set 1"; the test id keeps its number either way.
+    const setLabel = setTitle(match.config, setIndex + 1);
+    const testId = `set-chip-${unit}-${String(setIndex + 1)}`;
     if (completed !== undefined) {
       chips.push(
         <SetChip
-          key={setLabel}
+          key={testId}
           label={setLabel}
           score={`${String(completed.games.A)}–${String(completed.games.B)}`}
           state="done"
+          testId={testId}
         />,
       );
     } else if (setIndex + 1 === snapshot.setNumber) {
@@ -104,14 +82,17 @@ export function SetChips({
         : currentSetScore(snapshot).replaceAll("-", "–");
       chips.push(
         <SetChip
-          key={setLabel}
-          label={isSuperTieBreak ? "SUPER TB" : setLabel}
+          key={testId}
+          label={isSuperTieBreak ? "Super TB" : setLabel}
           score={score}
           state="current"
+          testId={isSuperTieBreak ? "set-chip-super-tb" : testId}
         />,
       );
     } else {
-      chips.push(<SetChip key={setLabel} label={setLabel} score="–" state="future" />);
+      chips.push(
+        <SetChip key={testId} label={setLabel} score="–" state="future" testId={testId} />,
+      );
     }
   }
   return <XStack gap={8}>{chips}</XStack>;
@@ -147,63 +128,50 @@ export function TeamCard({
   readonly onScore: () => void;
   readonly testID: string;
 }): ReactNode {
+  // The serving pair's card takes the highlight colour — the serve is the
+  // one thing on this screen that must read from across the court.
+  const content = serving ? colors.onPrimaryContainer : colors.onSurface;
   return (
     <XStack
       flex={1}
-      backgroundColor={colors.card}
-      borderRadius={22}
-      borderWidth={2}
-      borderColor={serving ? colors.accent : "transparent"}
-      paddingVertical={18}
-      paddingHorizontal={22}
+      backgroundColor={serving ? colors.primaryContainer : colors.card}
+      borderRadius={serving ? 48 : 28}
+      paddingVertical={16}
+      paddingHorizontal={24}
       alignItems="center"
       justifyContent="space-between"
-      boxShadow="0 2px 14px rgba(14, 17, 22, 0.07)"
-      pressStyle={{ opacity: 0.9, scale: 0.99 }}
+      pressStyle={{ opacity: 0.9, scale: 0.98 }}
       role="button"
       aria-label={`Point ${name}`}
       onPress={onScore}
-      position="relative"
-      overflow="hidden"
     >
-      {serving ? (
-        <View
-          position="absolute"
-          top={0}
-          left={0}
-          right={0}
-          bottom={0}
-          backgroundColor={accentAlpha(0.06)}
-          pointerEvents="none"
-        />
-      ) : null}
-      <YStack gap={7}>
+      <YStack gap={8} flex={1}>
         <XStack alignItems="center" gap={8}>
-          <XStack alignItems="center" gap={6} opacity={serving ? 1 : 0}>
-            <View
-              width={20}
-              height={20}
-              borderRadius={10}
-              backgroundColor={colors.accent}
-              alignItems="center"
-              justifyContent="center"
-              boxShadow={serving ? `0 0 0 4px ${accentAlpha(0.3)}` : "unset"}
-              testID={`${testID}-serve${serving ? "-on" : "-off"}`}
-            >
-              {Boolean(serving && servingSide) && (
-                <Body fontSize={11} fontWeight="900" color={colors.onAccent}>
-                  {serveBadge(serverNumber, servingSide)}
-                </Body>
-              )}
-            </View>
-          </XStack>
-          <Display fontSize={23}>{name.toUpperCase()}</Display>
+          <View
+            width={28}
+            height={28}
+            borderRadius={14}
+            backgroundColor={colors.onPrimaryContainer}
+            alignItems="center"
+            justifyContent="center"
+            opacity={serving ? 1 : 0}
+            testID={`${testID}-serve${serving ? "-on" : "-off"}`}
+          >
+            {Boolean(serving && servingSide) && (
+              <Body fontSize={12} fontWeight="700" color={colors.primaryContainer}>
+                {serveBadge(serverNumber, servingSide)}
+              </Body>
+            )}
+          </View>
+          <Display fontSize={22} color={content} flexShrink={1} numberOfLines={2}>
+            {name}
+          </Display>
         </XStack>
-        <Body fontSize={10} fontWeight="800" letterSpacing={1.6} color={textAlpha(0.35)}>
-          {hint ?? "TAP TO SCORE +1"}
-        </Body>
+        <Label color={content} opacity={0.8}>
+          {hint ?? "Tap to score +1"}
+        </Label>
       </YStack>
-      <Display fontSize={112} testID={testID}>
+      <Display fontSize={104} letterSpacing={-3} color={content} testID={testID}>
         {point}
       </Display>
     </XStack>
@@ -229,30 +197,27 @@ export function SetChoiceSheet({
       left={0}
       right={0}
       bottom={0}
-      backgroundColor={whiteAlpha(0.7)}
+      backgroundColor={colors.scrim}
       alignItems="center"
       justifyContent="center"
       paddingHorizontal={24}
     >
       <YStack
-        backgroundColor={colors.ink}
-        borderRadius={24}
+        backgroundColor={colors.surfaceContainerHigh}
+        borderRadius={28}
         padding={24}
         width="100%"
-        gap={18}
-        boxShadow="0 12px 40px rgba(14, 17, 22, 0.35)"
+        gap={16}
       >
-        <YStack gap={6} alignItems="center">
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.8} color={colors.accent}>
-            {`LEVEL AT ${String(target - 1)}-${String(target - 1)}`}
-          </Body>
-          <Display fontSize={22} color={colors.white} letterSpacing={1}>
-            RECEIVER'S CHOICE
-          </Display>
+        <YStack gap={4} alignItems="center">
+          <Label color={colors.primary} fontWeight="600">
+            {`Level at ${String(target - 1)}-${String(target - 1)}`}
+          </Label>
+          <Display fontSize={24}>Receiver's choice</Display>
         </YStack>
-        <XStack gap={10}>
+        <XStack gap={8}>
           <SetChoiceButton
-            label={`SHORT · TO ${String(target)}`}
+            label={`Short · to ${String(target)}`}
             detail="Next point wins"
             onPress={() => {
               onChoose("one");
@@ -260,7 +225,7 @@ export function SetChoiceSheet({
             testID="set-choice-one"
           />
           <SetChoiceButton
-            label={`LONG · TO ${String(target + 1)}`}
+            label={`Long · to ${String(target + 1)}`}
             detail="Play two more points"
             onPress={() => {
               onChoose("two");
@@ -268,9 +233,9 @@ export function SetChoiceSheet({
             testID="set-choice-two"
           />
         </XStack>
-        <Body textAlign="center" fontSize={10.5} fontWeight="600" color={whiteAlpha(0.5)}>
+        <Label textAlign="center" lineHeight={16}>
           The receiving pair decides; the choice is played to the end of the game
-        </Body>
+        </Label>
       </YStack>
     </View>
   );
@@ -290,65 +255,58 @@ function SetChoiceButton({
   return (
     <YStack
       flex={1}
-      backgroundColor={colors.card}
-      borderRadius={16}
-      paddingVertical={14}
-      paddingHorizontal={10}
+      backgroundColor={colors.secondaryContainer}
+      borderRadius={28}
+      paddingVertical={16}
+      paddingHorizontal={8}
       alignItems="center"
-      gap={4}
-      pressStyle={{ opacity: 0.85, scale: 0.99 }}
+      gap={2}
+      pressStyle={{ opacity: 0.85, borderRadius: 16 }}
       role="button"
       aria-label={label}
       onPress={onPress}
       testID={testID}
     >
-      <Display fontSize={14} color={colors.text}>
+      <Body fontSize={16} fontWeight="600" color={colors.onSecondaryContainer}>
         {label}
-      </Display>
-      <Body fontSize={9.5} fontWeight="700" color={textAlpha(0.45)}>
-        {detail}
       </Body>
+      <Label color={colors.onSecondaryContainer}>{detail}</Label>
     </YStack>
   );
 }
 
-/** The LIVE/PAUSED pill, court + set label, and match clock. */
+/** The Live/Paused pill, the set in play (when the match has more than one), and match clock. */
 export function LiveHeader({
   paused,
-  court,
-  sport,
-  setNumber,
+  setLabel,
   clock,
 }: {
   readonly paused: boolean;
-  readonly court: string | undefined;
-  readonly sport: string | undefined;
-  readonly setNumber: number;
+  /** "Set 2", "Game 2", "Super tie-break" — empty in a one-set match. */
+  readonly setLabel: string;
   readonly clock: string;
 }): ReactNode {
+  const content = paused ? colors.onSurfaceVariant : colors.onPrimaryContainer;
   return (
     <XStack alignItems="center" justifyContent="space-between">
       <Pill
-        backgroundColor={paused ? textAlpha(0.4) : colors.ink}
-        paddingVertical={6}
-        paddingLeft={9}
+        backgroundColor={paused ? colors.surfaceContainerHighest : colors.primaryContainer}
+        height={32}
+        paddingLeft={10}
         paddingRight={12}
         gap={6}
         testID="live-pill"
       >
-        {paused ? <Pause size={9} color={colors.white} /> : <LiveDot size={7} />}
-        <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.white}>
-          {paused ? "PAUSED" : "LIVE"}
+        {paused ? (
+          <Icon name="pause" size={16} color={content} />
+        ) : (
+          <LiveDot size={8} color={content} />
+        )}
+        <Body fontSize={14} fontWeight="600" color={content}>
+          {paused ? "Paused" : "Live"}
         </Body>
       </Pill>
-      <Body fontSize={11} fontWeight="700" letterSpacing={1.8} color={textAlpha(0.55)}>
-        {[
-          court?.toUpperCase(),
-          sport === "squash" ? `GAME ${String(setNumber)}` : `SET ${String(setNumber)}`,
-        ]
-          .filter((part): part is string => part !== undefined)
-          .join(" · ")}
-      </Body>
+      <Label>{setLabel}</Label>
       <Display fontSize={16} testID="match-clock">
         {clock}
       </Display>
@@ -356,7 +314,7 @@ export function LiveHeader({
   );
 }
 
-/** The UNDO / PAUSE / END row. */
+/** The Undo / Pause / End row — a button group, the middle action the widest. */
 export function LiveActionBar({
   paused,
   onUndo,
@@ -369,77 +327,34 @@ export function LiveActionBar({
   readonly onEnd: () => void;
 }): ReactNode {
   return (
-    <XStack gap={10}>
-      <XStack
+    <XStack gap={8}>
+      <Button
         flex={1}
-        height={58}
-        backgroundColor={colors.card}
-        borderWidth={1}
-        borderColor={textAlpha(0.08)}
-        borderRadius={16}
-        alignItems="center"
-        justifyContent="center"
-        gap={9}
-        boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
-        pressStyle={{ opacity: 0.85 }}
-        role="button"
+        label="Undo"
+        icon="undo"
+        variant="tonal"
+        paddingHorizontal={8}
         onPress={onUndo}
-      >
-        <Undo size={17} color={colors.text} />
-        <Body fontSize={14} fontWeight="800" letterSpacing={1.4}>
-          UNDO
-        </Body>
-      </XStack>
-      <XStack
+      />
+      <Button
         flex={1.3}
-        height={58}
-        backgroundColor={paused ? colors.accent : colors.card}
-        borderWidth={1}
-        borderColor={paused ? colors.accent : textAlpha(0.08)}
-        borderRadius={16}
-        alignItems="center"
-        justifyContent="center"
-        gap={9}
-        boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
-        pressStyle={{ opacity: 0.85 }}
-        role="button"
+        label={paused ? "Resume" : "Pause"}
+        icon={paused ? "play" : "pause"}
+        variant={paused ? "filled" : "tonal"}
+        paddingHorizontal={8}
         onPress={onTogglePause}
         testID="pause-toggle"
-      >
-        {paused ? (
-          <Play size={17} color={colors.onAccent} />
-        ) : (
-          <Pause size={17} color={colors.text} />
-        )}
-        <Body
-          fontSize={14}
-          fontWeight="800"
-          letterSpacing={1.4}
-          color={paused ? colors.onAccent : colors.text}
-        >
-          {paused ? "RESUME" : "PAUSE"}
-        </Body>
-      </XStack>
-      <XStack
+      />
+      <Button
         flex={1}
-        height={58}
-        borderWidth={1}
-        borderColor={textAlpha(0.16)}
-        borderRadius={16}
-        alignItems="center"
-        justifyContent="center"
-        gap={8}
-        pressStyle={{ opacity: 0.7 }}
-        role="button"
+        label="End"
         aria-label="End match"
+        icon="stop"
+        variant="outlined"
+        paddingHorizontal={8}
         onPress={onEnd}
         testID="end-match"
-      >
-        <Square size={13} color={textAlpha(0.55)} />
-        <Body fontSize={13} fontWeight="700" letterSpacing={1.4} color={textAlpha(0.5)}>
-          END
-        </Body>
-      </XStack>
+      />
     </XStack>
   );
 }

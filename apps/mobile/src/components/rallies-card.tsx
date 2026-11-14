@@ -5,12 +5,12 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { View, XStack, YStack } from "tamagui";
 import { CardHeader, Figure, ShareRow, ShareTile } from "@/components/insight-parts.tsx";
-import { Body, Card } from "@/components/ui.tsx";
+import { Card, Label, LegendKey } from "@/components/ui.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
 import { ownerTeamOf } from "@/lib/format.ts";
 import type { RallyLengths, RallySummary } from "@/lib/rallies.ts";
 import { leftOutLabel, rallyLengthLabel, rallyLengths, summarizeRallies } from "@/lib/rallies.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 const STRIP_HEIGHT = 44;
 
@@ -18,11 +18,11 @@ const STRIP_HEIGHT = 44;
 function Footnote({ lengths }: { readonly lengths: RallyLengths }): ReactNode {
   const leftOut = leftOutLabel(lengths);
   return (
-    <Body fontSize={11.5} fontWeight="600" color={textAlpha(0.5)} testID="rallies-footnote">
+    <Label lineHeight={16} testID="rallies-footnote">
       {leftOut === undefined
         ? "Timed from one point to the next."
         : `Timed from one point to the next. ${leftOut}`}
-    </Body>
+    </Label>
   );
 }
 
@@ -39,22 +39,13 @@ function RallyStrip({ lengths }: { readonly lengths: RallyLengths }): ReactNode 
             flex={1}
             height={Math.max(3, (rally.ms / longest) * STRIP_HEIGHT)}
             borderRadius={2}
-            backgroundColor={rally.won ? colors.accent : textAlpha(0.18)}
+            backgroundColor={rally.won ? colors.primary : colors.outlineVariant}
           />
         ))}
       </XStack>
-      <XStack gap={14}>
-        {[
-          { label: "YOU WON", color: colors.accent },
-          { label: "THEY WON", color: textAlpha(0.18) },
-        ].map((key) => (
-          <XStack key={key.label} alignItems="center" gap={5}>
-            <View width={8} height={8} borderRadius={2} backgroundColor={key.color} />
-            <Body fontSize={9.5} fontWeight="800" letterSpacing={1.1} color={textAlpha(0.45)}>
-              {key.label}
-            </Body>
-          </XStack>
-        ))}
+      <XStack gap={16}>
+        <LegendKey label="You won" color={colors.primary} />
+        <LegendKey label="They won" color={colors.outlineVariant} />
       </XStack>
     </YStack>
   );
@@ -88,22 +79,16 @@ export function MatchRalliesCard({
   }
   const words = halves(summary);
   return (
-    <Card
-      borderRadius={20}
-      paddingVertical={15}
-      paddingHorizontal={17}
-      gap={14}
-      testID="match-rallies"
-    >
-      <CardHeader title="RALLIES" aside={`${String(summary.count)} TIMED`} />
+    <Card padding={20} gap={16} testID="match-rallies">
+      <CardHeader title="Rallies" aside={`${String(summary.count)} timed`} />
       <XStack>
-        <Figure value={rallyLengthLabel(summary.averageMs)} label="AVERAGE" />
-        <Figure value={rallyLengthLabel(summary.medianMs)} label="TYPICAL" />
-        <Figure value={rallyLengthLabel(summary.longestMs)} label="LONGEST" />
+        <Figure value={rallyLengthLabel(summary.averageMs)} label="Average" />
+        <Figure value={rallyLengthLabel(summary.medianMs)} label="Typical" />
+        <Figure value={rallyLengthLabel(summary.longestMs)} label="Longest" />
       </XStack>
       <RallyStrip lengths={lengths} />
       {summary.long.of === 0 ? null : (
-        <YStack gap={12}>
+        <YStack gap={16}>
           <ShareRow
             label={`Long rallies · ${words.long.toLowerCase()}`}
             detail={`${String(summary.long.won)} of ${String(summary.long.of)}`}
@@ -136,27 +121,21 @@ export function RalliesCard({ lengths }: { readonly lengths: RallyLengths }): Re
   }
   const words = halves(summary);
   return (
-    <Card
-      borderRadius={20}
-      paddingVertical={15}
-      paddingHorizontal={17}
-      gap={14}
-      testID="rallies-card"
-    >
+    <Card padding={20} gap={16} testID="rallies-card">
       <CardHeader
-        title="LONG OR SHORT RALLIES"
-        aside={`AVG ${rallyLengthLabel(summary.averageMs)}`}
+        title="Long or short rallies"
+        aside={`Avg ${rallyLengthLabel(summary.averageMs)}`}
       />
       <XStack gap={8}>
         <ShareTile
           tally={summary.long}
-          label="LONG RALLIES"
+          label="Long rallies"
           explain={words.long}
           testID="rallies-long"
         />
         <ShareTile
           tally={summary.short}
-          label="SHORT RALLIES"
+          label="Short rallies"
           explain={words.short}
           testID="rallies-short"
         />

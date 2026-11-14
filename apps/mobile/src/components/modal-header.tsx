@@ -1,48 +1,15 @@
 import type { ReactNode } from "react";
 import { XStack } from "tamagui";
-import { ChevronLeft, X } from "@/components/icons.tsx";
+import { IconButton } from "@/components/controls.tsx";
 import { Display } from "@/components/ui.tsx";
-import { colors, textAlpha } from "@/theme/colors.ts";
 
 /**
- * A round, comfortably-sized tap target for a header glyph. The circular chip
- * (rather than bare text jammed into the corner) gives the control room to
- * breathe away from the screen edge and a clear 40pt hit area.
- */
-function IconButton({
-  onPress,
-  label,
-  children,
-}: {
-  readonly onPress: () => void;
-  readonly label: string;
-  readonly children: ReactNode;
-}): ReactNode {
-  return (
-    <XStack
-      width={40}
-      height={40}
-      borderRadius={20}
-      alignItems="center"
-      justifyContent="center"
-      backgroundColor={textAlpha(0.06)}
-      pressStyle={{ opacity: 0.6, backgroundColor: textAlpha(0.12) }}
-      role="button"
-      aria-label={label}
-      onPress={onPress}
-    >
-      {children}
-    </XStack>
-  );
-}
-
-/**
- * The shared slide-out header: a back/close icon button on the left, then the
- * title. Every modal uses this so the way out is always an icon in the same
- * spot, inset from the edge — never text crammed against the corner.
+ * The shared top app bar for pushed and modal screens: a back/close icon
+ * button on the left, then the headline. Every modal uses this so the way out
+ * is always an icon in the same spot.
  *
  * `variant` picks the glyph: "close" (✕, dismiss to where you came from) or
- * "back" (‹, step back a level). `label` is the accessible name — keep it stable
+ * "back" (←, step back a level). `label` is the accessible name — keep it stable
  * ("Cancel", "Close") so it reads well to VoiceOver and anchors E2E selectors.
  */
 export function ModalHeader({
@@ -51,7 +18,7 @@ export function ModalHeader({
   variant = "close",
   label = variant === "back" ? "Back" : "Close",
   right,
-  titleSize = 26,
+  titleSize = 24,
 }: {
   readonly title: string;
   readonly onClose: () => void;
@@ -61,15 +28,14 @@ export function ModalHeader({
   readonly titleSize?: number;
 }): ReactNode {
   return (
-    <XStack alignItems="center" gap={12}>
-      <IconButton onPress={onClose} label={label}>
-        {variant === "back" ? (
-          <ChevronLeft size={22} color={colors.text} />
-        ) : (
-          <X size={20} color={colors.text} />
-        )}
-      </IconButton>
-      <Display fontSize={titleSize} flex={1}>
+    <XStack alignItems="center" gap={8} minHeight={48} marginLeft={-8}>
+      <IconButton
+        icon={variant === "back" ? "arrowBack" : "close"}
+        label={label}
+        size={48}
+        onPress={onClose}
+      />
+      <Display fontSize={titleSize} fontWeight="600" flex={1} numberOfLines={1}>
         {title}
       </Display>
       {right}

@@ -3,15 +3,25 @@ import { Redirect, router, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, XStack, YStack } from "tamagui";
-import { ChevronLeft, ChevronRight } from "@/components/icons.tsx";
+import { XStack, YStack } from "tamagui";
+import { IconButton } from "@/components/controls.tsx";
+import { Icon } from "@/components/icons.tsx";
 import { RecordBar } from "@/components/record-bar.tsx";
 import { StatTile } from "@/components/stat-tile.tsx";
-import { Avatar, Body, Card, Display, Overline, Pill, ResultBadge } from "@/components/ui.tsx";
+import {
+  Avatar,
+  Body,
+  Card,
+  Display,
+  groupCorners,
+  Label,
+  ResultBadge,
+  SectionTitle,
+} from "@/components/ui.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
 import { fullDayLabel, recordLabel } from "@/lib/format.ts";
 import { goBack } from "@/lib/navigation.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 /** A player's profile — their record, preferred side, and matches with you. */
 export default function PlayerScreen(): ReactNode {
@@ -34,74 +44,51 @@ export default function PlayerScreen(): ReactNode {
 
   return (
     <ScrollView
-      style={{ backgroundColor: colors.screen }}
+      style={{ backgroundColor: colors.background }}
       contentContainerStyle={{
-        paddingTop: insets.top + 12,
+        paddingTop: insets.top + 8,
         paddingHorizontal: 16,
         paddingBottom: insets.bottom + 24,
         gap: 12,
       }}
     >
-      <XStack alignItems="center" justifyContent="space-between">
-        <View
-          width={38}
-          height={38}
-          borderRadius={19}
-          backgroundColor={colors.card}
-          alignItems="center"
-          justifyContent="center"
-          boxShadow="0 2px 8px rgba(14, 17, 22, 0.08)"
-          pressStyle={{ opacity: 0.8 }}
-          role="button"
-          aria-label="Back"
-          onPress={goBack}
-        >
-          <ChevronLeft size={15} color={colors.text} />
-        </View>
-        <Pill
-          borderWidth={1}
-          borderColor={textAlpha(0.16)}
-          paddingVertical={8}
-          paddingHorizontal={13}
-          pressStyle={{ opacity: 0.6 }}
-          role="button"
-          aria-label="Edit player"
+      <XStack alignItems="center" justifyContent="space-between" marginLeft={-8}>
+        <IconButton icon="arrowBack" label="Back" size={48} onPress={goBack} />
+        <IconButton
+          icon="edit"
+          label="Edit player"
+          variant="tonal"
+          size={48}
           onPress={() => {
             router.navigate(`/edit-player/${player.id}`);
           }}
           testID="edit-player"
-        >
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.55)}>
-            EDIT
-          </Body>
-        </Pill>
+        />
       </XStack>
 
-      <XStack alignItems="center" gap={14}>
-        <Avatar letter={player.name.charAt(0)} size={54} />
+      <XStack alignItems="center" gap={16}>
+        <Avatar letter={player.name.charAt(0)} size={72} shape="cookie" />
         <YStack flex={1}>
-          <Display fontSize={30}>{player.name.toUpperCase()}</Display>
-          <Body fontSize={12} fontWeight="600" color={textAlpha(0.45)}>
-            {subtitle}
-          </Body>
+          <Display fontSize={32}>{player.name}</Display>
+          <Label>{subtitle}</Label>
         </YStack>
       </XStack>
 
       <XStack gap={8}>
-        <StatTile value={String(stats.played)} label="PLAYED" variant="ink" />
-        <StatTile value={recordLabel(stats.record)} label="RECORD" variant="accent" />
-        <StatTile value={`${String(stats.winRatePercent)}%`} label="WIN RATE" variant="white" />
+        <StatTile value={String(stats.played)} label="Played" variant="surface" />
+        <StatTile value={recordLabel(stats.record)} label="Record" variant="primary" />
+        <StatTile value={`${String(stats.winRatePercent)}%`} label="Win rate" variant="tonal" />
       </XStack>
 
       {stats.form.length > 0 && (
         <Card
-          paddingVertical={13}
-          paddingHorizontal={17}
+          paddingVertical={16}
+          paddingHorizontal={20}
           flexDirection="row"
           alignItems="center"
           justifyContent="space-between"
         >
-          <Overline>FORM · LAST 5</Overline>
+          <SectionTitle>Form · last 5</SectionTitle>
           <XStack gap={6}>
             {stats.form.map((outcome, index) => (
               <ResultBadge
@@ -109,22 +96,22 @@ export default function PlayerScreen(): ReactNode {
                 key={index}
                 won={outcome === "won"}
                 drew={outcome === "drew"}
-                size={25}
+                size={28}
               />
             ))}
           </XStack>
         </Card>
       )}
 
-      <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={11}>
-        <Overline>WITH YOU</Overline>
+      <Card padding={20} gap={12}>
+        <SectionTitle>With you</SectionTitle>
         {togetherTotal === 0 ? (
-          <Body fontSize={13} fontWeight="600" color={textAlpha(0.45)}>
+          <Body fontSize={14} color={colors.onSurfaceVariant}>
             No matches partnering you yet
           </Body>
         ) : (
           <XStack alignItems="center" gap={12}>
-            <Body flex={1} fontSize={14} fontWeight="700" color={textAlpha(0.6)}>
+            <Body flex={1} fontSize={14} color={colors.onSurfaceVariant}>
               {`${String(togetherTotal)} played together`}
             </Body>
             <RecordBar
@@ -132,54 +119,55 @@ export default function PlayerScreen(): ReactNode {
               lost={stats.withOwner.lost}
               drew={stats.withOwner.drew}
             />
-            <Display fontSize={15} width={52} textAlign="right">
+            <Display fontSize={16} width={52} textAlign="right">
               {recordLabel(stats.withOwner)}
             </Display>
           </XStack>
         )}
         {againstTotal > 0 && (
           <XStack alignItems="center" justifyContent="space-between">
-            <Body fontSize={14.5} fontWeight="700">
-              vs you
-            </Body>
-            <Display fontSize={15}>{recordLabel(stats.againstOwner)}</Display>
+            <Body fontSize={16}>vs you</Body>
+            <Display fontSize={16}>{recordLabel(stats.againstOwner)}</Display>
           </XStack>
         )}
       </Card>
 
       {stats.matchesTogether.length > 0 && (
-        <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={13}>
-          <Overline>MATCHES WITH YOU</Overline>
-          {stats.matchesTogether.map((match) => (
-            <XStack
-              key={match.id}
-              alignItems="center"
-              justifyContent="space-between"
-              pressStyle={{ opacity: 0.7 }}
-              role="button"
-              onPress={() => {
-                router.push(`/match/${match.id}`);
-              }}
-            >
-              <YStack gap={1}>
-                <Body fontSize={14} fontWeight="700">
-                  {fullDayLabel(match.startedAt)}
-                </Body>
-                <Body fontSize={11.5} fontWeight="600" color={textAlpha(0.45)}>
-                  {match.scoreLine ?? ""}
-                </Body>
-              </YStack>
-              <XStack alignItems="center" gap={10}>
+        <>
+          <SectionTitle color={colors.primary} paddingHorizontal={8} paddingTop={12}>
+            Matches with you
+          </SectionTitle>
+          <YStack gap={2}>
+            {stats.matchesTogether.map((match, index) => (
+              <XStack
+                key={match.id}
+                alignItems="center"
+                gap={16}
+                minHeight={72}
+                paddingVertical={12}
+                paddingHorizontal={16}
+                backgroundColor={colors.card}
+                {...groupCorners(index, stats.matchesTogether.length)}
+                pressStyle={{ opacity: 0.8 }}
+                role="button"
+                onPress={() => {
+                  router.push(`/match/${match.id}`);
+                }}
+              >
                 <ResultBadge
                   won={match.outcome === "won"}
                   drew={match.outcome === "drew"}
-                  size={25}
+                  size={40}
                 />
-                <ChevronRight size={13} color={textAlpha(0.3)} />
+                <YStack flex={1} gap={2}>
+                  <Body fontSize={16}>{fullDayLabel(match.startedAt)}</Body>
+                  <Label>{match.scoreLine ?? ""}</Label>
+                </YStack>
+                <Icon name="chevronRight" color={colors.onSurfaceVariant} />
               </XStack>
-            </XStack>
-          ))}
-        </Card>
+            ))}
+          </YStack>
+        </>
       )}
     </ScrollView>
   );

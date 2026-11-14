@@ -27,7 +27,7 @@ export function RecentOpponents({
     <ScrollView
       horizontal={true}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 7 }}
+      contentContainerStyle={{ gap: 8 }}
       testID="recent-opponents"
     >
       {recent.map((entry) => (

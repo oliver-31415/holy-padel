@@ -11,13 +11,13 @@ test.describe("pause / resume", () => {
     // Score a couple of points, then pause.
     await score(page, "A", 2);
     await expectPoints(page, "30", "0");
-    await expect(page.getByTestId("live-pill")).toHaveText("LIVE");
+    await expect(page.getByTestId("live-pill")).toHaveText("Live");
 
     await page.getByTestId("pause-toggle").click();
 
     // Paused state: the pill flips and the button offers RESUME.
-    await expect(page.getByTestId("live-pill")).toHaveText("PAUSED");
-    await expect(page.getByTestId("pause-toggle")).toHaveText("RESUME");
+    await expect(page.getByTestId("live-pill")).toHaveText("Paused");
+    await expect(page.getByTestId("pause-toggle")).toHaveText("Resume");
     await expect(page.getByText("Paused — workout paused on your watch too")).toBeVisible();
 
     // Tapping a team while paused must NOT score.
@@ -27,8 +27,8 @@ test.describe("pause / resume", () => {
 
     // Resume: back to live, and scoring works again.
     await page.getByTestId("pause-toggle").click();
-    await expect(page.getByTestId("live-pill")).toHaveText("LIVE");
-    await expect(page.getByTestId("pause-toggle")).toHaveText("PAUSE");
+    await expect(page.getByTestId("live-pill")).toHaveText("Live");
+    await expect(page.getByTestId("pause-toggle")).toHaveText("Pause");
 
     await score(page, "A", 1);
     await expectPoints(page, "40", "0");

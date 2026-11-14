@@ -3,12 +3,13 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Pressable } from "react-native";
 import { XStack, YStack } from "tamagui";
-import { ChevronRight } from "@/components/icons.tsx";
+import { Button } from "@/components/controls.tsx";
+import { Icon } from "@/components/icons.tsx";
 import { CardHeader } from "@/components/insight-parts.tsx";
 import { RecordBar } from "@/components/record-bar.tsx";
-import { Avatar, Body, Card, Display } from "@/components/ui.tsx";
+import { Avatar, Body, Card, Display, Label } from "@/components/ui.tsx";
 import type { PersonRecord } from "@/lib/insights.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 /** Rows shown per list before "Show all". */
 const COLLAPSED = 3;
@@ -54,15 +55,15 @@ function PersonRow({
       }}
     >
       <XStack alignItems="center" gap={12}>
-        <Avatar letter={record.name.charAt(0)} size={30} />
-        <Body flex={1} fontSize={14.5} fontWeight="700" textAlign="left" numberOfLines={1}>
+        <Avatar letter={record.name.charAt(0)} size={40} />
+        <Body flex={1} fontSize={16} textAlign="left" numberOfLines={1}>
           {record.name}
         </Body>
         <RecordBar won={record.won} lost={record.lost} drew={record.drew} />
-        <Display fontSize={15} width={40} textAlign="right">
+        <Display fontSize={16} width={40} textAlign="right">
           {`${String(record.won)}–${String(record.lost)}`}
         </Display>
-        <ChevronRight size={13} color={textAlpha(0.3)} />
+        <Icon name="chevronRight" size={20} color={colors.onSurfaceVariant} />
       </XStack>
     </Pressable>
   );
@@ -76,16 +77,14 @@ function Highlight({
   readonly record: PersonRecord;
 }): ReactNode {
   return (
-    <YStack flex={1} backgroundColor={colors.row} borderRadius={14} padding={11} gap={2}>
-      <Body fontSize={8.5} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.4)}>
-        {label}
-      </Body>
-      <Body fontSize={14} fontWeight="800" numberOfLines={1}>
+    <YStack flex={1} backgroundColor={colors.cardInset} borderRadius={20} padding={16} gap={2}>
+      <Label>{label}</Label>
+      <Body fontSize={16} fontWeight="600" numberOfLines={1}>
         {record.name}
       </Body>
-      <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
+      <Label>
         {`${String(Math.round(winShare(record) * 100))}% won · ${String(playedWith(record))} played`}
-      </Body>
+      </Label>
     </YStack>
   );
 }
@@ -105,10 +104,10 @@ function PeopleList({
     return null;
   }
   return (
-    <YStack gap={11}>
-      <Body fontSize={9.5} fontWeight="800" letterSpacing={1.4} color={textAlpha(0.4)}>
+    <YStack gap={12}>
+      <Label color={colors.primary} fontWeight="600">
         {title}
-      </Body>
+      </Label>
       {(expanded ? records : records.slice(0, COLLAPSED)).map((record) => (
         <PersonRow key={record.playerId} record={record} testPrefix={testPrefix} />
       ))}
@@ -135,28 +134,26 @@ export function PeopleCard({
   const toughest = standout(rivals, "worst");
   const hidden = Math.max(0, partners.length - COLLAPSED) + Math.max(0, rivals.length - COLLAPSED);
   return (
-    <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={14}>
-      <CardHeader title="PARTNERS & RIVALS" />
+    <Card padding={20} gap={16}>
+      <CardHeader title="Partners & rivals" />
       {best === undefined && toughest === undefined ? null : (
         <XStack gap={8}>
-          {best === undefined ? null : <Highlight label="BEST WITH" record={best} />}
-          {toughest === undefined ? null : <Highlight label="TOUGHEST" record={toughest} />}
+          {best === undefined ? null : <Highlight label="Best with" record={best} />}
+          {toughest === undefined ? null : <Highlight label="Toughest" record={toughest} />}
         </XStack>
       )}
-      <PeopleList title="PARTNERS" records={partners} expanded={expanded} testPrefix="partner" />
-      <PeopleList title="RIVALS" records={rivals} expanded={expanded} testPrefix="rival" />
+      <PeopleList title="Partners" records={partners} expanded={expanded} testPrefix="partner" />
+      <PeopleList title="Rivals" records={rivals} expanded={expanded} testPrefix="rival" />
       {hidden === 0 ? null : (
-        <Pressable
-          role="button"
-          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, alignSelf: "center" })}
+        <Button
+          label={expanded ? "Show less" : `Show all · ${String(hidden)} more`}
+          variant="text"
+          size="sm"
+          alignSelf="center"
           onPress={() => {
             setExpanded((open) => !open);
           }}
-        >
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={colors.accentOnCard}>
-            {expanded ? "SHOW LESS" : `SHOW ALL · ${String(hidden)} MORE`}
-          </Body>
-        </Pressable>
+        />
       )}
     </Card>
   );

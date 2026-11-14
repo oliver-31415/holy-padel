@@ -2,10 +2,20 @@ import type { MatchSummary } from "@holy-padel/db";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { View, XStack, YStack } from "tamagui";
-import { Body, Card, Display, Overline, ResultBadge } from "@/components/ui.tsx";
+import { Button } from "@/components/controls.tsx";
+import { Icon } from "@/components/icons.tsx";
+import {
+  Body,
+  Card,
+  Display,
+  Divider,
+  Label,
+  ResultBadge,
+  SectionTitle,
+} from "@/components/ui.tsx";
 import { fullDayLabel, opponentsOf, ownerTeamOf, pairLabel } from "@/lib/format.ts";
 import type { DayCell } from "@/lib/history.ts";
-import { accentRgb, colors, teamBRgb, textAlpha } from "@/theme/colors.ts";
+import { colors, lossRgb, winRgb } from "@/theme/colors.ts";
 
 /**
  * The home screen's season calendar — one row per week, seven day columns
@@ -14,15 +24,15 @@ import { accentRgb, colors, teamBRgb, textAlpha } from "@/theme/colors.ts";
  * a month label in the left gutter wherever the month changes.
  *
  * The day colour is a scale, not a category: 0% wins sits at the Team B
- * colour, 100% at the accent (both chosen in Settings), so a glance separates
+ * colour, 100% at the highlight (both chosen in Settings), so a glance separates
  * "lost everything" from "won everything" and every shade between is a real
  * win share. Tapping a day with matches expands that day's results beneath
  * the grid.
  */
 
-const GAP = 5;
+const GAP = 6;
 /** Left column holding the month label, so the 7 day columns stay aligned. */
-const GUTTER = 34;
+const GUTTER = 32;
 const DAY_LABELS = [
   { key: "sun", label: "S" },
   { key: "mon", label: "M" },
@@ -33,27 +43,25 @@ const DAY_LABELS = [
   { key: "sat", label: "S" },
 ] as const;
 const MONTHS = [
-  "JAN",
-  "FEB",
-  "MAR",
-  "APR",
-  "MAY",
-  "JUN",
-  "JUL",
-  "AUG",
-  "SEP",
-  "OCT",
-  "NOV",
-  "DEC",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ] as const;
 
-const RADIUS = 8;
-
-/** Lost-everything is the Team B colour, won-everything the accent — both user-chosen. */
+/** Lost-everything is the Team B colour, won-everything the highlight — both user-chosen. */
 function winShareColor(won: number, lost: number): string {
   const share = won + lost === 0 ? 0 : won / (won + lost);
-  const [lr, lg, lb] = teamBRgb();
-  const [wr, wg, wb] = accentRgb();
+  const [lr, lg, lb] = lossRgb();
+  const [wr, wg, wb] = winRgb();
   const channel = (l: number, w: number): number => Math.round(l + (w - l) * share);
   return `rgb(${String(channel(lr, wr))}, ${String(channel(lg, wg))}, ${String(channel(lb, wb))})`;
 }
@@ -94,20 +102,21 @@ function DaySquare({
   // A day of only level early stops has no win share, so it stays neutral.
   const onlyDraws = cell.won + cell.lost === 0 && cell.drew > 0;
   const fill = onlyDraws
-    ? textAlpha(0.3)
+    ? colors.outline
     : played
       ? winShareColor(cell.won, cell.lost)
-      : textAlpha(0.05);
-  const inner = <View width="100%" height="100%" borderRadius={RADIUS} backgroundColor={fill} />;
+      : colors.cardInset;
+  const inner = <View width="100%" height="100%" borderRadius={999} backgroundColor={fill} />;
 
   if (!played) {
     return (
       <View
         flex={1}
         aspectRatio={1}
-        borderRadius={RADIUS + 2}
+        borderRadius={999}
+        padding={ringed ? 2 : 0}
         borderWidth={ringed ? 2 : 0}
-        borderColor={colors.white}
+        borderColor={colors.onSurface}
         alignItems="center"
         justifyContent="center"
       >
@@ -119,9 +128,10 @@ function DaySquare({
     <View
       flex={1}
       aspectRatio={1}
-      borderRadius={RADIUS + 2}
+      borderRadius={999}
+      padding={ringed ? 2 : 0}
       borderWidth={ringed ? 2 : 0}
-      borderColor={colors.white}
+      borderColor={colors.onSurface}
       alignItems="center"
       justifyContent="center"
       pressStyle={{ opacity: 0.65 }}
@@ -160,20 +170,11 @@ function DayMatches({
       ? `${String(won)}–${String(lost)}`
       : `${String(won)}–${String(lost)}–${String(drew)}`;
   return (
-    <YStack gap={11}>
+    <YStack gap={12}>
+      <Divider />
       <XStack alignItems="center" justifyContent="space-between">
-        <Display fontSize={15}>{`${fullDayLabel(day)} · ${record}`}</Display>
-        <Body
-          fontSize={11}
-          fontWeight="800"
-          letterSpacing={1}
-          color={textAlpha(0.45)}
-          pressStyle={{ opacity: 0.6 }}
-          role="button"
-          onPress={onDismiss}
-        >
-          CLOSE
-        </Body>
+        <SectionTitle>{`${fullDayLabel(day)} · ${record}`}</SectionTitle>
+        <Button label="Close" variant="text" size="sm" marginRight={-12} onPress={onDismiss} />
       </XStack>
       {dayMatches.map((match) => {
         const ownerTeam = ownerTeamOf(match, ownerId);
@@ -188,17 +189,17 @@ function DayMatches({
               router.push(`/match/${match.id}`);
             }}
           >
-            <Body flex={1} fontSize={14.5} fontWeight="700">
+            <Body flex={1} fontSize={16}>
               {`vs ${pairLabel(opponentsOf(match, ownerTeam))}`}
             </Body>
             <XStack alignItems="center" gap={12}>
-              <Display fontSize={15} color={textAlpha(0.6)}>
+              <Display fontSize={14} color={colors.onSurfaceVariant}>
                 {match.scoreLine ?? ""}
               </Display>
               <ResultBadge
                 won={match.winner === ownerTeam}
                 drew={match.winner === undefined}
-                size={26}
+                size={28}
               />
             </XStack>
           </XStack>
@@ -239,30 +240,40 @@ export function HistoryGrid({
   };
 
   return (
-    <Card borderRadius={22} paddingVertical={16} paddingHorizontal={16} gap={14}>
+    <Card padding={16} gap={16}>
       <XStack alignItems="center" justifyContent="space-between">
         <YStack>
-          <Overline>LAST 6 WEEKS</Overline>
-          <Display fontSize={17}>
+          <SectionTitle>Last 6 weeks</SectionTitle>
+          <Label marginTop={2}>
             {drew === 0
-              ? `${String(won)}W · ${String(lost)}L`
-              : `${String(won)}W · ${String(lost)}L · ${String(drew)}D`}
-          </Display>
+              ? `${String(won)} won · ${String(lost)} lost`
+              : `${String(won)} won · ${String(lost)} lost · ${String(drew)} drew`}
+          </Label>
         </YStack>
         {streak === undefined ? null : (
           <XStack
-            backgroundColor={colors.tileInk}
-            borderRadius={14}
-            paddingVertical={9}
-            paddingHorizontal={14}
+            backgroundColor={
+              streak.kind === "won" ? colors.secondaryContainer : colors.surfaceContainerHighest
+            }
+            borderRadius={16}
+            height={32}
+            paddingLeft={streak.kind === "won" ? 8 : 12}
+            paddingRight={12}
             alignItems="center"
-            gap={8}
+            gap={4}
           >
-            <Display fontSize={14} color={streak.kind === "won" ? colors.accent : colors.white}>
+            {streak.kind === "won" ? (
+              <Icon name="fire" size={18} color={colors.onSecondaryContainer} />
+            ) : null}
+            <Body
+              fontSize={14}
+              fontWeight="500"
+              color={streak.kind === "won" ? colors.onSecondaryContainer : colors.onSurfaceVariant}
+            >
               {streak.kind === "won"
                 ? `Won last ${String(streak.count)}`
                 : `Lost last ${String(streak.count)}`}
-            </Display>
+            </Body>
           </XStack>
         )}
       </XStack>
@@ -272,9 +283,7 @@ export function HistoryGrid({
           <View width={GUTTER} />
           {DAY_LABELS.map((day) => (
             <View key={day.key} flex={1} alignItems="center">
-              <Body fontSize={10} fontWeight="800" color={textAlpha(0.35)}>
-                {day.label}
-              </Body>
+              <Label>{day.label}</Label>
             </View>
           ))}
         </XStack>
@@ -283,11 +292,7 @@ export function HistoryGrid({
           return (
             <XStack key={String(week[0]?.day)} gap={GAP}>
               <View width={GUTTER} justifyContent="center">
-                {monthLabel === "" ? null : (
-                  <Body fontSize={9} fontWeight="800" letterSpacing={0.8} color={textAlpha(0.4)}>
-                    {monthLabel}
-                  </Body>
-                )}
+                {monthLabel === "" ? null : <Label>{monthLabel}</Label>}
               </View>
               {week.map((cell) => (
                 <DaySquare
@@ -302,25 +307,18 @@ export function HistoryGrid({
         })}
       </YStack>
 
-      <XStack alignItems="center" justifyContent="center" gap={10}>
-        <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
-          0%
-        </Body>
+      <XStack alignItems="center" justifyContent="center" gap={8}>
+        <Label>0%</Label>
         {[0, 0.25, 0.5, 0.75, 1].map((share) => (
           <View
             key={share}
-            width={15}
-            height={13}
-            borderRadius={4}
+            width={12}
+            height={12}
+            borderRadius={6}
             backgroundColor={winShareColor(share, 1 - share)}
           />
         ))}
-        <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
-          100% won
-        </Body>
-        <Body fontSize={11} fontWeight="700" color={textAlpha(0.35)}>
-          {`· ${String(played)} played`}
-        </Body>
+        <Label>{`100% won · ${String(played)} played`}</Label>
       </XStack>
 
       {selectedDay === undefined ? null : (

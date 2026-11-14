@@ -26,7 +26,7 @@ function step(t: number, overrides: Partial<GameSeriesStep> = {}): GameSeriesSte
 const names = { A: "Nico", B: "Sam" };
 const noSet = { A: 0, B: 0 };
 /** The labels a padel readout carries; squash swaps them for POINTS and GAMES. */
-const padel = { pointsLabel: "GAME", gamesLabel: "SET" };
+const padel = { pointsLabel: "Game", gamesLabel: "Set" };
 
 describe("nearestStep", () => {
   const steps = [step(0), step(10_000), step(30_000)];
@@ -195,7 +195,7 @@ describe("scrubReadout", () => {
       openingSetGames: noSet,
       squash: true,
     });
-    expect(readout).toMatchObject({ pointsLabel: "POINTS", gamesLabel: "GAMES", points: "3–2" });
+    expect(readout).toMatchObject({ pointsLabel: "Points", gamesLabel: "Games", points: "3–2" });
   });
 });
 
@@ -213,9 +213,9 @@ describe("scrubReadout for pickleball", () => {
     );
     expect(readout).toEqual({
       serving: "Nico",
-      pointsLabel: "POINTS",
+      pointsLabel: "Points",
       points: "1–0–2",
-      gamesLabel: "GAMES",
+      gamesLabel: "Games",
       elapsed: "1:00",
     });
   });

@@ -11,7 +11,7 @@ test.describe("matches tab (design 3e)", () => {
     await gotoMatches(page);
 
     await expect(page.getByText("13 stored locally")).toBeVisible();
-    await expect(page.getByText("LIVE", { exact: true })).toBeVisible();
+    await expect(page.getByText("Live", { exact: true })).toBeVisible();
     await expect(page.getByText("6-4 · 4-3")).toBeVisible();
     // The super tie-break match renders its three-part line.
     await expect(page.getByText("7-5 · 2-6 · 10-7")).toBeVisible();
@@ -21,12 +21,12 @@ test.describe("matches tab (design 3e)", () => {
   test("filters narrow to won, lost and the top rivals", async ({ page }) => {
     await gotoMatches(page);
 
-    await page.getByRole("button", { name: "WON", exact: true }).click();
-    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Won", exact: true }).click();
+    await expect(page.getByText("Live", { exact: true })).toHaveCount(0);
     await expect(page.getByText("4-6 · 6-7")).toHaveCount(0);
     await expect(page.getByText("6-3 · 7-6")).toBeVisible();
 
-    await page.getByRole("button", { name: "LOST", exact: true }).click();
+    await page.getByRole("button", { name: "Lost", exact: true }).click();
     await expect(page.getByText("4-6 · 6-7")).toBeVisible();
     await expect(page.getByText("6-3 · 7-6")).toHaveCount(0);
 
@@ -35,7 +35,7 @@ test.describe("matches tab (design 3e)", () => {
     await expect(page.getByText("vs Marta & Leo").first()).toBeVisible();
     await expect(page.getByText("vs Ana & Pablo")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "ALL", exact: true }).click();
+    await page.getByRole("button", { name: "All", exact: true }).click();
     await expect(page.getByText("vs Ana & Pablo").first()).toBeVisible();
   });
 
@@ -54,7 +54,7 @@ test.describe("matches tab (design 3e)", () => {
 
   test("the NEW pill opens match setup", async ({ page }) => {
     await gotoMatches(page);
-    await page.getByRole("button", { name: "NEW", exact: true }).click();
+    await page.getByRole("button", { name: "New match", exact: true }).click();
     await expect(page.getByText("Doubles · FIP scoring")).toBeVisible();
   });
 });

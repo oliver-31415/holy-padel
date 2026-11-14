@@ -12,22 +12,23 @@ import { File, Paths } from "expo-file-system";
 import { shareAsync, isAvailableAsync as sharingAvailable } from "expo-sharing";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Alert, Platform, Share, TextInput } from "react-native";
+import { Alert, Platform, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { XStack, YStack } from "tamagui";
 import { ConfirmSheet } from "@/components/confirm-sheet.tsx";
+import { Button, ListItem, TextField } from "@/components/controls.tsx";
 import { ModalHeader } from "@/components/modal-header.tsx";
-import { Body, Card, Display, Overline } from "@/components/ui.tsx";
+import { Display, Label } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { megabytesLabel } from "@/lib/format.ts";
 import { goBack } from "@/lib/navigation.ts";
-import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 /**
  * Local data controls — everything lives in on-device SQLite, so this is where
  * you back it up or wipe it. Export produces a JSON backup (matches, point
  * ledgers, players, settings); Import restores one, replacing what's here.
- * Reached from the "ON THIS PHONE" card on Profile.
+ * Reached from the "On this phone" row on Profile.
  */
 
 function backupFileName(exportedAt: number): string {
@@ -137,157 +138,108 @@ export default function DataScreen(): ReactNode {
   return (
     <YStack
       flex={1}
-      backgroundColor={colors.screen}
-      paddingTop={insets.top + 14}
+      backgroundColor={colors.background}
+      paddingTop={insets.top + 8}
       paddingBottom={insets.bottom + 16}
-      paddingHorizontal={20}
-      gap={18}
+      paddingHorizontal={16}
+      gap={16}
     >
-      <ModalHeader title="YOUR DATA" onClose={goBack} label="Close" />
+      <ModalHeader title="Your data" onClose={goBack} label="Close" />
 
-      <YStack
-        backgroundColor={colors.ink}
-        borderRadius={20}
-        paddingVertical={18}
-        paddingHorizontal={18}
-        gap={4}
-      >
-        <Overline color={colors.accent}>ON THIS PHONE</Overline>
-        <Display fontSize={30} color={colors.white}>
+      <YStack backgroundColor={colors.primaryContainer} borderRadius={36} padding={24} gap={2}>
+        <Label color={colors.onPrimaryContainer}>On this phone</Label>
+        <Display fontSize={36} letterSpacing={-0.5} color={colors.onPrimaryContainer}>
           {`${String(count)} matches`}
         </Display>
-        <Body fontSize={12} fontWeight="600" color={whiteAlpha(0.5)}>
+        <Label color={colors.onPrimaryContainer}>
           {`SQLite · ${megabytesLabel(sizeBytes)} · never leaves your device`}
-        </Body>
+        </Label>
       </YStack>
 
-      <YStack gap={10}>
-        <Card
-          borderRadius={16}
-          paddingVertical={16}
-          paddingHorizontal={18}
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          aria-label="Export backup"
+      <YStack gap={2}>
+        <ListItem
+          icon="upload"
+          headline="Export backup"
+          supporting="Full JSON backup — matches, points, players and settings"
+          chevron={false}
+          index={0}
+          count={3}
           onPress={exportAll}
           testID="export-data"
-        >
-          <Body fontSize={15} fontWeight="800" color={colors.text}>
-            Export backup
-          </Body>
-          <Body fontSize={12} fontWeight="600" color={textAlpha(0.45)} marginTop={2}>
-            Full JSON backup — matches, points, players and settings
-          </Body>
-        </Card>
-
-        <Card
-          borderRadius={16}
-          paddingVertical={16}
-          paddingHorizontal={18}
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          aria-label="Import backup"
+        />
+        <ListItem
+          icon="download"
+          headline="Import backup"
+          supporting={
+            Platform.OS === "web"
+              ? "Paste an exported backup to restore it"
+              : "Pick an exported backup file to restore it"
+          }
+          chevron={false}
+          index={1}
+          count={3}
           onPress={importAll}
           testID="import-data"
-        >
-          <Body fontSize={15} fontWeight="800" color={colors.text}>
-            Import backup
-          </Body>
-          <Body fontSize={12} fontWeight="600" color={textAlpha(0.45)} marginTop={2}>
-            {Platform.OS === "web"
-              ? "Paste an exported backup to restore it"
-              : "Pick an exported backup file to restore it"}
-          </Body>
-        </Card>
+        />
 
         {importOpen ? (
-          <YStack gap={9} testID="import-sheet">
-            <TextInput
-              style={{
-                fontSize: 11,
-                fontFamily: "Archivo_600SemiBold",
-                color: colors.text,
-                padding: 12,
-                backgroundColor: colors.card,
-                borderRadius: 13,
-                borderWidth: 1,
-                borderColor: textAlpha(0.1),
-                minHeight: 110,
-                textAlignVertical: "top",
-              }}
+          <YStack
+            gap={8}
+            padding={16}
+            backgroundColor={colors.card}
+            borderRadius={6}
+            testID="import-sheet"
+          >
+            <TextField
+              style={{ fontSize: 12, minHeight: 112, textAlignVertical: "top" }}
               value={importText}
               onChangeText={setImportText}
               placeholder="Paste the backup JSON here…"
-              placeholderTextColor={textAlpha(0.4)}
               multiline={true}
               autoCapitalize="none"
               autoCorrect={false}
               testID="import-input"
             />
-            <XStack gap={9}>
-              <XStack
+            <XStack gap={8}>
+              {/* Not `disabled`: an empty paste leaves the tap a no-op, as before. */}
+              <Button
                 flex={1}
-                height={48}
-                backgroundColor={colors.ink}
-                borderRadius={14}
-                alignItems="center"
-                justifyContent="center"
+                label="Restore"
+                size="sm"
                 opacity={importText.trim() === "" ? 0.4 : 1}
-                pressStyle={{ opacity: 0.85 }}
-                role="button"
                 onPress={() => {
                   if (importText.trim() !== "") {
                     restore(importText.trim());
                   }
                 }}
                 testID="import-restore"
-              >
-                <Display fontSize={14} letterSpacing={1.2} color={colors.accent}>
-                  RESTORE
-                </Display>
-              </XStack>
-              <XStack
-                width={92}
-                height={48}
-                borderWidth={1}
-                borderColor={textAlpha(0.16)}
-                borderRadius={14}
-                alignItems="center"
-                justifyContent="center"
-                pressStyle={{ opacity: 0.7 }}
-                role="button"
+              />
+              <Button
+                label="Cancel"
+                variant="outlined"
+                size="sm"
                 onPress={() => {
                   setImportText("");
                   setImportOpen(false);
                 }}
-              >
-                <Body fontSize={12} fontWeight="800" color={textAlpha(0.55)}>
-                  Cancel
-                </Body>
-              </XStack>
+              />
             </XStack>
           </YStack>
         ) : null}
 
-        <Card
-          borderRadius={16}
-          paddingVertical={16}
-          paddingHorizontal={18}
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          aria-label="Delete all matches"
+        <ListItem
+          icon="trash"
+          headline="Delete all matches"
+          supporting="Wipe every match from this phone"
+          chevron={false}
+          danger={true}
+          index={2}
+          count={3}
           onPress={() => {
             setConfirmingDeleteAll(true);
           }}
           testID="delete-all-data"
-        >
-          <Body fontSize={15} fontWeight="800" color={colors.danger}>
-            Delete all matches
-          </Body>
-          <Body fontSize={12} fontWeight="600" color={textAlpha(0.45)} marginTop={2}>
-            Wipe every match from this phone
-          </Body>
-        </Card>
+        />
       </YStack>
 
       {pendingBackup === undefined ? null : (
@@ -296,7 +248,7 @@ export default function DataScreen(): ReactNode {
           message={`Replaces everything on this phone with the backup's ${String(
             pendingBackup.matches.length,
           )} matches. This can't be undone.`}
-          confirmLabel="RESTORE"
+          confirmLabel="Restore"
           onConfirm={restoreConfirmed}
           onCancel={() => {
             setPendingBackup(undefined);
@@ -308,7 +260,7 @@ export default function DataScreen(): ReactNode {
         <ConfirmSheet
           title="Delete all matches?"
           message="Removes every match and its points from this phone. This can't be undone."
-          confirmLabel="DELETE ALL"
+          confirmLabel="Delete all"
           onConfirm={deleteAllConfirmed}
           onCancel={() => {
             setConfirmingDeleteAll(false);

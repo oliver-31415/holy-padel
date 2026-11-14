@@ -24,12 +24,11 @@ export function MatchWorkoutSection({
   const motion = useDbQuery((driver) => loadMatchMotion(driver, match.id));
   const owner = useDbQuery(getOwner);
   const maxHr = useDbQuery(resolveMaxHr);
-  const { sport } = match.config;
   return (
     <>
       <ScoreRaceCard
         series={series}
-        sport={sport}
+        config={match.config}
         matchStartedAt={match.startedAt}
         names={teamNames(match)}
         {...(heartRate === undefined ? {} : { heartRate })}
@@ -42,7 +41,7 @@ export function MatchWorkoutSection({
         motion={motion}
         team={ownerTeamOf(match, owner?.id ?? "nico")}
         maxHr={maxHr.bpm}
-        squash={sport === "squash"}
+        config={match.config}
       />
     </>
   );

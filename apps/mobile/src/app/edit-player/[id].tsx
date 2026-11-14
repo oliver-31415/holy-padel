@@ -4,13 +4,15 @@ import { Redirect, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, XStack, YStack } from "tamagui";
+import { YStack } from "tamagui";
+import { Button } from "@/components/controls.tsx";
 import { EditPlayerForm } from "@/components/edit-player-form.tsx";
 import { ModalHeader } from "@/components/modal-header.tsx";
+import { Sheet } from "@/components/sheet.tsx";
 import { Body, Display } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { goBack } from "@/lib/navigation.ts";
-import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 /**
  * Edit another player's profile — or delete them, choosing whether their
@@ -52,13 +54,13 @@ export default function EditPlayerScreen(): ReactNode {
   return (
     <YStack
       flex={1}
-      backgroundColor={colors.screen}
-      paddingTop={insets.top + 14}
+      backgroundColor={colors.background}
+      paddingTop={insets.top + 8}
       paddingBottom={insets.bottom + 16}
-      paddingHorizontal={20}
-      gap={20}
+      paddingHorizontal={16}
+      gap={16}
     >
-      <ModalHeader title="EDIT PLAYER" onClose={goBack} label="Cancel" />
+      <ModalHeader title="Edit player" onClose={goBack} label="Cancel" />
 
       <EditPlayerForm
         initialName={player.name}
@@ -67,133 +69,68 @@ export default function EditPlayerScreen(): ReactNode {
         onSave={save}
       />
 
-      <XStack
-        height={54}
-        borderRadius={18}
-        backgroundColor={colors.card}
-        borderWidth={1}
-        borderColor={textAlpha(0.08)}
-        alignItems="center"
-        justifyContent="center"
-        pressStyle={{ opacity: 0.85 }}
-        role="button"
-        aria-label="Delete player"
+      <Button
+        label="Delete player"
+        variant="dangerText"
+        icon="trash"
         onPress={() => {
           setConfirming(true);
         }}
         testID="delete-player"
-      >
-        <Body fontSize={13} fontWeight="800" letterSpacing={1.2} color={colors.danger}>
-          DELETE PLAYER
-        </Body>
-      </XStack>
+      />
 
       {confirming ? (
-        <View position="absolute" top={0} left={0} right={0} bottom={0}>
-          <View
-            flex={1}
-            backgroundColor={textAlpha(0.45)}
-            role="button"
-            aria-label="Cancel delete"
+        <Sheet
+          onDismiss={() => {
+            setConfirming(false);
+          }}
+          dismissLabel="Cancel delete"
+        >
+          <Display fontSize={24}>{`Delete ${player.name}?`}</Display>
+          <Body fontSize={14} lineHeight={20} color={colors.onSurfaceVariant}>
+            {matchCount === 0
+              ? "This removes the profile from this phone."
+              : `${player.name} is in ${String(matchCount)} ${matchWord} on this phone.`}
+          </Body>
+          {matchCount > 0 ? (
+            <>
+              <Button
+                label="Delete profile, keep matches"
+                variant="tonal"
+                marginTop={8}
+                onPress={() => {
+                  remove("keepMatches");
+                }}
+                testID="delete-keep-matches"
+              />
+              <Button
+                label={`Delete profile + ${String(matchCount)} ${matchWord}`}
+                variant="danger"
+                onPress={() => {
+                  remove("withMatches");
+                }}
+                testID="delete-with-matches"
+              />
+            </>
+          ) : (
+            <Button
+              label="Delete player"
+              variant="danger"
+              marginTop={8}
+              onPress={() => {
+                remove("withMatches");
+              }}
+              testID="delete-player-confirm"
+            />
+          )}
+          <Button
+            label="Cancel"
+            variant="text"
             onPress={() => {
               setConfirming(false);
             }}
           />
-          <YStack
-            backgroundColor={colors.sheet}
-            borderTopLeftRadius={28}
-            borderTopRightRadius={28}
-            paddingTop={14}
-            paddingHorizontal={16}
-            paddingBottom={insets.bottom + 16}
-            gap={10}
-            boxShadow="0 -12px 40px rgba(14, 17, 22, 0.25)"
-          >
-            <View
-              alignSelf="center"
-              width={40}
-              height={5}
-              borderRadius={999}
-              backgroundColor={textAlpha(0.15)}
-            />
-            <Display fontSize={20}>{`DELETE ${player.name.toUpperCase()}?`}</Display>
-            <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.45)}>
-              {matchCount === 0
-                ? "This removes the profile from this phone."
-                : `${player.name} is in ${String(matchCount)} ${matchWord} on this phone.`}
-            </Body>
-            {matchCount > 0 ? (
-              <>
-                <XStack
-                  height={54}
-                  borderRadius={16}
-                  backgroundColor={colors.card}
-                  alignItems="center"
-                  justifyContent="center"
-                  pressStyle={{ opacity: 0.85 }}
-                  role="button"
-                  onPress={() => {
-                    remove("keepMatches");
-                  }}
-                  testID="delete-keep-matches"
-                >
-                  <Body fontSize={13.5} fontWeight="800" color={colors.danger}>
-                    Delete profile, keep matches
-                  </Body>
-                </XStack>
-                <XStack
-                  height={54}
-                  borderRadius={16}
-                  backgroundColor={colors.danger}
-                  alignItems="center"
-                  justifyContent="center"
-                  pressStyle={{ opacity: 0.85 }}
-                  role="button"
-                  onPress={() => {
-                    remove("withMatches");
-                  }}
-                  testID="delete-with-matches"
-                >
-                  <Body fontSize={13.5} fontWeight="800" color={colors.white}>
-                    {`Delete profile + ${String(matchCount)} ${matchWord}`}
-                  </Body>
-                </XStack>
-              </>
-            ) : (
-              <XStack
-                height={54}
-                borderRadius={16}
-                backgroundColor={colors.danger}
-                alignItems="center"
-                justifyContent="center"
-                pressStyle={{ opacity: 0.85 }}
-                role="button"
-                onPress={() => {
-                  remove("withMatches");
-                }}
-                testID="delete-player-confirm"
-              >
-                <Body fontSize={13.5} fontWeight="800" color={colors.white}>
-                  Delete player
-                </Body>
-              </XStack>
-            )}
-            <XStack
-              height={50}
-              alignItems="center"
-              justifyContent="center"
-              pressStyle={{ opacity: 0.7 }}
-              role="button"
-              onPress={() => {
-                setConfirming(false);
-              }}
-            >
-              <Body fontSize={12} fontWeight="800" letterSpacing={1.2} color={whiteAlpha(0.5)}>
-                CANCEL
-              </Body>
-            </XStack>
-          </YStack>
-        </View>
+        </Sheet>
       ) : null}
     </YStack>
   );

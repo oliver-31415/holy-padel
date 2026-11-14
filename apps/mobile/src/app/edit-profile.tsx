@@ -37,13 +37,17 @@ export default function EditProfileScreen(): ReactNode {
   return (
     <YStack
       flex={1}
-      backgroundColor={colors.screen}
-      paddingTop={insets.top + 14}
+      backgroundColor={colors.background}
+      paddingTop={insets.top + 8}
       paddingBottom={insets.bottom + 16}
-      paddingHorizontal={20}
-      gap={20}
+      paddingHorizontal={16}
+      gap={16}
     >
-      <ModalHeader title="EDIT PROFILE" onClose={goBack} label="Cancel" />
+      <ModalHeader
+        title={owner === undefined ? "Set up your profile" : "Edit profile"}
+        onClose={goBack}
+        label="Cancel"
+      />
 
       <EditPlayerForm
         initialName={owner?.name ?? ""}

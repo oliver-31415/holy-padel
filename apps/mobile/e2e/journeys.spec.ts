@@ -18,18 +18,18 @@ test.describe("multi-match journeys", () => {
     await winLoveGames(page, "A", 6);
     await expect(page.getByText("MATCH WON")).toBeVisible();
 
-    await page.getByRole("button", { name: "REMATCH", exact: true }).click();
+    await page.getByRole("button", { name: "Rematch", exact: true }).click();
     await expectPoints(page, "0", "0");
     await winLoveGames(page, "B", 6);
     await expect(page.getByText("MATCH LOST")).toBeVisible();
-    await page.getByRole("button", { name: "DONE", exact: true }).click();
+    await page.getByRole("button", { name: "Done", exact: true }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
 
     // Both new matches are finished, and the seeded live match was saved
     // (Nico & Javi ahead) when the first one started — nothing is left live.
     await page.goto("/matches");
     await expect(page.getByText("15 stored locally")).toBeVisible({ timeout: 90_000 });
-    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Live", { exact: true })).toHaveCount(0);
 
     // Profile counted the saved seed match and the chain's win, plus one loss.
     await page.goto("/profile");
@@ -45,7 +45,7 @@ test.describe("multi-match journeys", () => {
     // Only the new match is live — the seeded one wasn't left orphaned.
     await page.goto("/matches");
     await expect(page.getByText("stored locally")).toBeVisible({ timeout: 90_000 });
-    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(1);
+    await expect(page.getByText("Live", { exact: true })).toHaveCount(1);
 
     // Home tracks the new match.
     await page.goto("/");
@@ -80,7 +80,7 @@ test.describe("multi-match journeys", () => {
     // Back in play: the match is live again, not saved as a win.
     await page.goto("/matches");
     await expect(page.getByText("stored locally")).toBeVisible({ timeout: 90_000 });
-    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(1);
+    await expect(page.getByText("Live", { exact: true })).toHaveCount(1);
   });
 
   test("the result is saved even without pressing DONE", async ({ page }) => {
@@ -92,7 +92,7 @@ test.describe("multi-match journeys", () => {
     // Leave by URL instead of the button: the ledger must already be final.
     await page.goto("/matches");
     await expect(page.getByText("stored locally")).toBeVisible({ timeout: 90_000 });
-    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Live", { exact: true })).toHaveCount(0);
     await expect(page.getByText("6-4 · 6-3")).toBeVisible();
 
     await page.goto("/");

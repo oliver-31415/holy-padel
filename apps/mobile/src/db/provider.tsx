@@ -77,12 +77,12 @@ export function DbProvider({ children }: { readonly children: ReactNode }): Reac
       <View
         style={{
           flex: 1,
-          backgroundColor: colors.ink,
+          backgroundColor: colors.inverseSurface,
           justifyContent: "center",
           alignItems: "center",
         }}
       >
-        <Text style={{ color: colors.white }}>
+        <Text style={{ color: colors.inverseOnSurface }}>
           DB Error: {error instanceof Error ? error.message : JSON.stringify(error)}
         </Text>
       </View>

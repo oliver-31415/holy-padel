@@ -4,17 +4,24 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View } from "tamagui";
-import { Body, LiveDot } from "@/components/ui.tsx";
-import { colors, whiteAlpha } from "@/theme/colors.ts";
+import { Icon, type IconName } from "@/components/icons.tsx";
+import { Body } from "@/components/ui.tsx";
+import { colors } from "@/theme/colors.ts";
 
 function TabButton({
   label,
+  icon,
+  activeIcon,
   isFocused = false,
   ref: _ref,
   ...props
-}: TabTriggerSlotProps & { readonly label: string }): ReactNode {
+}: TabTriggerSlotProps & {
+  readonly label: string;
+  readonly icon: IconName;
+  readonly activeIcon: IconName;
+}): ReactNode {
   return (
-    // testID keeps the tab tap unambiguous — "HOME" as text collides with the
+    // testID keeps the tab tap unambiguous — "Home" as text collides with the
     // Android system navigation bar's Home button.
     <Pressable
       {...props}
@@ -23,62 +30,75 @@ function TabButton({
       style={styles.tab}
       unstable_pressDelay={0}
     >
-      <View alignItems="center" gap={3}>
-        <Body
-          fontSize={11}
-          fontWeight="800"
-          letterSpacing={1.4}
-          color={isFocused ? colors.accent : whiteAlpha(0.45)}
-        >
-          {label}
-        </Body>
-        {isFocused ? <LiveDot size={4} /> : null}
+      <View
+        width={64}
+        height={32}
+        borderRadius={16}
+        alignItems="center"
+        justifyContent="center"
+        backgroundColor={isFocused ? colors.secondaryContainer : "transparent"}
+      >
+        <Icon
+          name={isFocused ? activeIcon : icon}
+          color={isFocused ? colors.onSecondaryContainer : colors.onSurfaceVariant}
+        />
       </View>
+      <Body
+        fontSize={12}
+        fontWeight={isFocused ? "700" : "500"}
+        letterSpacing={0.2}
+        color={isFocused ? colors.onSurface : colors.onSurfaceVariant}
+      >
+        {label}
+      </Body>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  // The pressable stretches to the full height of the tab bar so the whole
-  // quarter of the pill is tappable — the label alone was a ~15pt target.
+  // The pressable stretches to the full height of the bar so the whole
+  // quarter of it is tappable, not just the indicator.
   tab: {
     flex: 1,
     alignSelf: "stretch",
     alignItems: "center",
     justifyContent: "center",
+    gap: 4,
   },
 });
 
-/** The design's floating dark pill: four labels, accent dot under the active one. */
+/** The bar's height above the safe area; tab screens pad their scroll content past it. */
+const NAV_BAR_HEIGHT = 80;
+
+/** Material's navigation bar: four destinations, a tonal pill behind the active icon. */
 export default function TabsLayout(): ReactNode {
   const insets = useSafeAreaInsets();
   return (
-    <Tabs style={{ flex: 1, backgroundColor: colors.screen }}>
+    <Tabs style={{ flex: 1, backgroundColor: colors.background }}>
       <TabSlot />
       <TabList asChild={true}>
         <View
           position="absolute"
-          left={16}
-          right={16}
-          bottom={insets.bottom + 8}
-          height={64}
-          borderRadius={999}
-          backgroundColor={colors.ink}
+          left={0}
+          right={0}
+          bottom={0}
+          height={NAV_BAR_HEIGHT + insets.bottom}
+          paddingBottom={insets.bottom}
+          backgroundColor={colors.surfaceContainerHigh}
           flexDirection="row"
           alignItems="center"
-          paddingHorizontal={8}
         >
           <TabTrigger name="index" href="/" asChild={true}>
-            <TabButton label="HOME" />
+            <TabButton label="Home" icon="home" activeIcon="homeFilled" />
           </TabTrigger>
           <TabTrigger name="matches" href="/matches" asChild={true}>
-            <TabButton label="MATCHES" />
+            <TabButton label="Matches" icon="matches" activeIcon="matchesFilled" />
           </TabTrigger>
           <TabTrigger name="stats" href="/stats" asChild={true}>
-            <TabButton label="STATS" />
+            <TabButton label="Stats" icon="stats" activeIcon="statsFilled" />
           </TabTrigger>
           <TabTrigger name="profile" href="/profile" asChild={true}>
-            <TabButton label="PROFILE" />
+            <TabButton label="Profile" icon="person" activeIcon="personFilled" />
           </TabTrigger>
         </View>
       </TabList>

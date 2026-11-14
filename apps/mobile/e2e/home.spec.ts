@@ -14,14 +14,14 @@ test.describe("home screen (design 3a)", () => {
     await expect(page.getByTestId("home-point-A")).toHaveText("40");
     await expect(page.getByTestId("home-point-B")).toHaveText("30");
     await expect(page.getByTestId("home-score-line")).toHaveText("6-4 · 4-3");
-    await expect(page.getByText(/SET 2 · \d+:\d\d · COURT 4/u)).toBeVisible();
+    await expect(page.getByText(/Set 2 · \d+:\d\d/u)).toBeVisible();
 
     await expect(page.getByRole("button", { name: "RESUME SCORING" })).toBeVisible();
     await expect(page.getByRole("button", { name: "NEW MATCH" })).toBeVisible();
     await expect(page.getByText("vs Marta & Leo").first()).toBeVisible();
 
     // Form strip: 8–4 over the season, five recent results.
-    await expect(page.getByText("FORM", { exact: true })).toBeVisible();
+    await expect(page.getByText("Form", { exact: true })).toBeVisible();
     await expect(page.getByText("8–4")).toBeVisible();
   });
 
@@ -35,7 +35,7 @@ test.describe("home screen (design 3a)", () => {
 
   test("rematch creates a fresh live match against the last opponents", async ({ page }) => {
     await gotoHome(page);
-    await page.getByRole("button", { name: /REMATCH/u }).click();
+    await page.getByRole("button", { name: /Rematch/u }).click();
     await saveLiveMatchIfAsked(page);
     await expect(page).toHaveURL(/\/live\/match-/u);
     await expect(page.getByTestId("point-A")).toHaveText("0");

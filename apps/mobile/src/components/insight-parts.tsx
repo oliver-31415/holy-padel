@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { View, XStack, YStack } from "tamagui";
-import { Body, Display, Overline } from "@/components/ui.tsx";
+import { Body, Display, Label, ProgressBar, SectionTitle } from "@/components/ui.tsx";
 import type { Tally } from "@/lib/clutch.ts";
 import { percentOf } from "@/lib/clutch.ts";
 import { ZONES } from "@/lib/effort.ts";
-import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
+import { colors, primaryAlpha } from "@/theme/colors.ts";
 
-/** A card's overline title with an optional quiet figure on the right. */
+/** A card's title with an optional quiet figure on the right. */
 export function CardHeader({
   title,
   aside,
@@ -16,12 +16,8 @@ export function CardHeader({
 }): ReactNode {
   return (
     <XStack alignItems="center" justifyContent="space-between">
-      <Overline>{title}</Overline>
-      {aside === undefined ? null : (
-        <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.4)}>
-          {aside}
-        </Body>
-      )}
+      <SectionTitle>{title}</SectionTitle>
+      {aside === undefined ? null : <Label>{aside}</Label>}
     </XStack>
   );
 }
@@ -42,21 +38,15 @@ export function ShareRow({
 }): ReactNode {
   const share = of === 0 ? 0 : won / of;
   return (
-    <YStack gap={6} {...(testID === undefined ? {} : { testID })}>
+    <YStack gap={8} {...(testID === undefined ? {} : { testID })}>
       <XStack alignItems="baseline" justifyContent="space-between">
-        <Body fontSize={13.5} fontWeight="700">
-          {label}
-        </Body>
-        <XStack alignItems="baseline" gap={7}>
-          <Body fontSize={10.5} fontWeight="700" color={textAlpha(0.4)}>
-            {detail}
-          </Body>
+        <Body fontSize={14}>{label}</Body>
+        <XStack alignItems="baseline" gap={8}>
+          <Label>{detail}</Label>
           <Display fontSize={16}>{`${String(Math.round(share * 100))}%`}</Display>
         </XStack>
       </XStack>
-      <View height={6} borderRadius={999} backgroundColor={colors.greige} overflow="hidden">
-        <View width={`${String(share * 100)}%`} height="100%" backgroundColor={colors.accent} />
-      </View>
+      <ProgressBar share={share} />
     </YStack>
   );
 }
@@ -77,30 +67,29 @@ export function ShareTile({
   return (
     <YStack
       flex={1}
-      backgroundColor={colors.row}
-      borderRadius={14}
-      paddingVertical={12}
-      paddingHorizontal={12}
+      backgroundColor={colors.cardInset}
+      borderRadius={20}
+      padding={16}
       gap={2}
       testID={testID}
     >
-      <Display fontSize={34} color={share === undefined ? textAlpha(0.3) : colors.accentOnCard}>
+      <Display
+        fontSize={36}
+        letterSpacing={-0.5}
+        color={share === undefined ? colors.onSurfaceVariant : colors.primary}
+      >
         {share === undefined ? "—" : `${String(share)}%`}
       </Display>
-      <Body fontSize={10} fontWeight="800" letterSpacing={1.2}>
+      <Body fontSize={14} fontWeight="600">
         {label}
       </Body>
-      <Body fontSize={11} fontWeight="600" color={textAlpha(0.5)}>
-        {explain}
-      </Body>
-      <Body fontSize={11} fontWeight="700" color={textAlpha(0.4)}>
-        {tally.of === 0 ? "none yet" : `${String(tally.won)} of ${String(tally.of)}`}
-      </Body>
+      <Label lineHeight={16}>{explain}</Label>
+      <Label>{tally.of === 0 ? "none yet" : `${String(tally.won)} of ${String(tally.of)}`}</Label>
     </YStack>
   );
 }
 
-/** A big figure over a small uppercase label. */
+/** A big figure over a small label. */
 export function Figure({
   value,
   label,
@@ -112,12 +101,10 @@ export function Figure({
 }): ReactNode {
   return (
     <YStack flex={1} alignItems="center" gap={2}>
-      <Display fontSize={22} {...(color === undefined ? {} : { color })}>
+      <Display fontSize={20} numberOfLines={1} {...(color === undefined ? {} : { color })}>
         {value}
       </Display>
-      <Body fontSize={8.5} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.4)}>
-        {label}
-      </Body>
+      <Label>{label}</Label>
     </YStack>
   );
 }
@@ -126,7 +113,7 @@ const ZONE_ALPHA = [0.2, 0.36, 0.55, 0.78, 1] as const;
 
 /** Zones read as one ramp of the highlight colour — calm is faint, flat out is solid. */
 export function zoneColor(index: number): string {
-  return accentAlpha(ZONE_ALPHA[index] ?? 1);
+  return primaryAlpha(ZONE_ALPHA[index] ?? 1);
 }
 
 /** Time in each heart-rate zone as one stacked bar. */
@@ -184,18 +171,16 @@ export function ZoneLegend({
 }): ReactNode {
   const total = zones.reduce((sum, ms) => sum + ms, 0);
   return (
-    <YStack gap={7}>
+    <YStack gap={8}>
       {ZONES.map((zone, index) => {
         const ms = zones[index] ?? 0;
         return (
-          <XStack key={zone.label} alignItems="center" gap={9}>
-            <View width={10} height={10} borderRadius={3} backgroundColor={zoneColor(index)} />
-            <Body flex={1} fontSize={12.5} fontWeight="700">
+          <XStack key={zone.label} alignItems="center" gap={12}>
+            <View width={12} height={12} borderRadius={6} backgroundColor={zoneColor(index)} />
+            <Body flex={1} fontSize={14}>
               {`${zone.label} · ${zoneRange(index, maxHr)} bpm`}
             </Body>
-            <Body fontSize={11.5} fontWeight="700" color={textAlpha(0.45)}>
-              {minutesLabel(ms)}
-            </Body>
+            <Label>{minutesLabel(ms)}</Label>
             <Display fontSize={14} width={40} textAlign="right">
               {`${String(total === 0 ? 0 : Math.round((ms / total) * 100))}%`}
             </Display>

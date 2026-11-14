@@ -2,10 +2,11 @@ import { getOwner, setSetting } from "@holy-padel/db";
 import { useFocusEffect } from "expo-router";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, ScrollView } from "react-native";
+import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, XStack, YStack } from "tamagui";
+import { XStack, YStack } from "tamagui";
 import { ClutchCard } from "@/components/clutch-card.tsx";
+import { Chip } from "@/components/controls.tsx";
 import { EffortCard, TrendCard, ZonesCard } from "@/components/effort-cards.tsx";
 import { PeopleCard } from "@/components/people-card.tsx";
 import { RalliesCard } from "@/components/rallies-card.tsx";
@@ -19,13 +20,13 @@ import {
   resolveMaxHr,
   sportsPlayed,
 } from "@/lib/insights.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 const SPORT_LABELS: Record<Sport | "all", string> = {
-  all: "ALL",
-  padel: "PADEL",
-  squash: "SQUASH",
-  pickleball: "PICKLEBALL",
+  all: "All",
+  padel: "Padel",
+  squash: "Squash",
+  pickleball: "Pickleball",
 };
 
 function SportFilter({
@@ -38,39 +39,19 @@ function SportFilter({
   readonly onChange: (next: Sport | "all") => void;
 }): ReactNode {
   return (
-    <XStack gap={7}>
-      {(["all", ...sports] as const).map((sport) => {
-        const active = sport === value;
-        return (
-          <Pressable
-            key={sport}
-            role="button"
-            aria-selected={active}
-            testID={`stats-sport-${sport}`}
-            onPress={() => {
-              onChange(sport);
-            }}
-          >
-            <View
-              paddingVertical={7}
-              paddingHorizontal={13}
-              borderRadius={999}
-              backgroundColor={active ? colors.ink : "transparent"}
-              borderWidth={active ? 0 : 1}
-              borderColor={textAlpha(0.16)}
-            >
-              <Body
-                fontSize={11}
-                fontWeight="800"
-                letterSpacing={1}
-                color={active ? colors.white : textAlpha(0.5)}
-              >
-                {SPORT_LABELS[sport]}
-              </Body>
-            </View>
-          </Pressable>
-        );
-      })}
+    <XStack gap={8}>
+      {(["all", ...sports] as const).map((sport) => (
+        <Chip
+          key={sport}
+          label={SPORT_LABELS[sport]}
+          selected={sport === value}
+          aria-selected={sport === value}
+          testID={`stats-sport-${sport}`}
+          onPress={() => {
+            onChange(sport);
+          }}
+        />
+      ))}
     </XStack>
   );
 }
@@ -96,11 +77,11 @@ function StatsBody(): ReactNode {
 
   if (data.length === 0) {
     return (
-      <Card borderRadius={20} paddingVertical={18} paddingHorizontal={17} gap={6}>
-        <Body fontSize={15} fontWeight="800">
+      <Card padding={20} gap={4}>
+        <Body fontSize={16} fontWeight="500">
           Nothing to read yet
         </Body>
-        <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.5)}>
+        <Body fontSize={14} lineHeight={20} color={colors.onSurfaceVariant}>
           Finish a match and your big points, partners and rivals show up here.
         </Body>
       </Card>
@@ -154,15 +135,17 @@ export default function StatsScreen(): ReactNode {
   );
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.screen }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
-        paddingTop: insets.top + 12,
+        paddingTop: insets.top + 8,
         paddingHorizontal: 16,
-        paddingBottom: insets.bottom + 90,
+        paddingBottom: insets.bottom + 96,
         gap: 12,
       }}
     >
-      <Display fontSize={30}>STATS</Display>
+      <Display fontSize={32} paddingTop={8}>
+        Stats
+      </Display>
       {focused ? <StatsBody /> : null}
     </ScrollView>
   );

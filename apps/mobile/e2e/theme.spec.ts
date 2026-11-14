@@ -9,32 +9,32 @@ test.describe("theme selection (profile appearance)", () => {
     await page.goto("/profile");
     await expect(page.getByText("WIN RATE")).toBeVisible({ timeout: 90_000 });
 
-    // The profile title uses the palette's text color: ink in light mode,
-    // cream in dark mode — a stable read of the active theme.
+    // The profile title uses the palette's text color: near-black in light
+    // mode, near-white in dark mode — a stable read of the active theme.
     const titleColor = (): Promise<string> =>
       page
-        .getByText("NICO", { exact: true })
+        .getByText("Nico", { exact: true })
         .first()
         .evaluate((el) => getComputedStyle(el).color);
 
     // Defaults to System, and the emulated OS is light.
-    await expect.poll(titleColor).toBe("rgb(14, 17, 22)");
+    await expect.poll(titleColor).toBe("rgb(31, 26, 25)");
 
     await page.getByRole("button", { name: "Dark", exact: true }).click();
-    await expect.poll(titleColor).toBe("rgb(241, 240, 234)");
+    await expect.poll(titleColor).toBe("rgb(235, 224, 221)");
 
     // The choice survives a reload.
     await page.reload();
     await expect(page.getByText("WIN RATE")).toBeVisible({ timeout: 90_000 });
-    await expect.poll(titleColor).toBe("rgb(241, 240, 234)");
+    await expect.poll(titleColor).toBe("rgb(235, 224, 221)");
 
     await page.getByRole("button", { name: "Light", exact: true }).click();
-    await expect.poll(titleColor).toBe("rgb(14, 17, 22)");
+    await expect.poll(titleColor).toBe("rgb(31, 26, 25)");
 
     // System follows the OS: light, then a live flip to dark.
     await page.getByRole("button", { name: "System", exact: true }).click();
-    await expect.poll(titleColor).toBe("rgb(14, 17, 22)");
+    await expect.poll(titleColor).toBe("rgb(31, 26, 25)");
     await page.emulateMedia({ colorScheme: "dark" });
-    await expect.poll(titleColor).toBe("rgb(241, 240, 234)");
+    await expect.poll(titleColor).toBe("rgb(235, 224, 221)");
   });
 });

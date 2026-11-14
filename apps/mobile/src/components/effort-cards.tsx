@@ -1,15 +1,15 @@
 import type { Outcome } from "@holy-padel/db";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Pressable } from "react-native";
 import { View, XStack, YStack } from "tamagui";
+import { Chip, IconButton } from "@/components/controls.tsx";
 import { CardHeader, ShareRow, ZoneBar, ZoneLegend } from "@/components/insight-parts.tsx";
-import { Body, Card, Display } from "@/components/ui.tsx";
+import { Body, Card, Display, Label, LegendKey } from "@/components/ui.tsx";
 import type { EffortBand } from "@/lib/effort.ts";
 import { MIN_EFFORT_GAMES } from "@/lib/effort.ts";
 import { distanceLabel } from "@/lib/game-activity.ts";
 import type { MaxHr, TrendPoint } from "@/lib/insights.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
 
 /** Win-rate gap between the calmest and hardest games worth calling out. */
 const EFFORT_GAP = 10;
@@ -55,24 +55,18 @@ export function EffortCard({
     return null;
   }
   return (
-    <Card
-      borderRadius={20}
-      paddingVertical={15}
-      paddingHorizontal={17}
-      gap={14}
-      testID="effort-card"
-    >
-      <CardHeader title="EFFORT VS RESULTS" aside={`${String(trackedGames)} GAMES`} />
+    <Card padding={20} gap={16} testID="effort-card">
+      <CardHeader title="Effort vs results" aside={`${String(trackedGames)} games`} />
       {bands === undefined ? (
-        <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.5)}>
+        <Body fontSize={14} lineHeight={20} color={colors.onSurfaceVariant}>
           {`Track ${String(Math.max(1, MIN_EFFORT_GAMES - trackedGames))} more games on your watch to compare effort and results.`}
         </Body>
       ) : (
         <>
-          <Body fontSize={14} fontWeight="800">
+          <Body fontSize={16} fontWeight="500">
             {effortVerdict(bands)}
           </Body>
-          <YStack gap={12}>
+          <YStack gap={16}>
             {bands.map((band) => (
               <ShareRow
                 key={bandLabel(band)}
@@ -92,9 +86,9 @@ export function EffortCard({
 type Metric = "bpm" | "steps" | "distance";
 
 const METRICS: readonly { readonly value: Metric; readonly label: string }[] = [
-  { value: "bpm", label: "AVG BPM" },
-  { value: "steps", label: "STEPS" },
-  { value: "distance", label: "DISTANCE" },
+  { value: "bpm", label: "Avg bpm" },
+  { value: "steps", label: "Steps" },
+  { value: "distance", label: "Distance" },
 ];
 
 function metricOf(point: TrendPoint, metric: Metric): number | undefined {
@@ -130,14 +124,14 @@ function changeLabel(values: readonly number[], metric: Metric): string | undefi
   return `${arrow} ${metricLabel(Math.abs(delta), metric)} vs the ${String(values.length - half)} before`;
 }
 
-const CHART_HEIGHT = 74;
+const CHART_HEIGHT = 96;
 
 /** Won is the highlight, a level early stop a neutral mid-tone, a loss the faintest. */
 function barColor(outcome: Outcome): string {
   if (outcome === "won") {
-    return colors.accent;
+    return colors.primary;
   }
-  return outcome === "drew" ? textAlpha(0.3) : textAlpha(0.18);
+  return outcome === "drew" ? colors.outline : colors.outlineVariant;
 }
 
 function TrendBars({
@@ -153,18 +147,18 @@ function TrendBars({
   // Leave a floor so small differences still read, without starting at zero.
   const floor = Math.max(0, low - (high - low) * 0.6);
   return (
-    <XStack height={CHART_HEIGHT} alignItems="flex-end" gap={6}>
+    <XStack height={CHART_HEIGHT} alignItems="flex-end" gap={8}>
       {points.map((point, index) => {
         const value = values[index] ?? 0;
         const height =
-          value === 0 ? 3 : 8 + ((value - floor) / (high - floor)) * (CHART_HEIGHT - 8);
+          value === 0 ? 8 : 24 + ((value - floor) / (high - floor)) * (CHART_HEIGHT - 24);
         return (
           <XStack key={point.matchId} flex={1} justifyContent="center" alignItems="flex-end">
             <View
               width="70%"
-              maxWidth={26}
+              maxWidth={40}
               height={height}
-              borderRadius={5}
+              borderRadius={12}
               backgroundColor={barColor(point.outcome)}
             />
           </XStack>
@@ -190,108 +184,35 @@ export function TrendCard({ points }: { readonly points: readonly TrendPoint[] }
   const latest = values.at(-1);
   const change = changeLabel(values, metric);
   return (
-    <Card
-      borderRadius={20}
-      paddingVertical={15}
-      paddingHorizontal={17}
-      gap={13}
-      testID="trend-card"
-    >
-      <CardHeader title="TRENDS" aside={`LAST ${String(points.length)} TRACKED`} />
-      <XStack gap={6}>
-        {available.map((option) => {
-          const active = option.value === metric;
-          return (
-            <Pressable
-              key={option.value}
-              role="button"
-              aria-selected={active}
-              testID={`trend-${option.value}`}
-              onPress={() => {
-                setChosen(option.value);
-              }}
-            >
-              <View
-                paddingVertical={6}
-                paddingHorizontal={11}
-                borderRadius={999}
-                backgroundColor={active ? colors.text : "transparent"}
-                borderWidth={active ? 0 : 1}
-                borderColor={textAlpha(0.16)}
-              >
-                <Body
-                  fontSize={10.5}
-                  fontWeight="800"
-                  letterSpacing={0.8}
-                  color={active ? colors.screen : textAlpha(0.5)}
-                >
-                  {option.label}
-                </Body>
-              </View>
-            </Pressable>
-          );
-        })}
+    <Card padding={20} gap={16} testID="trend-card">
+      <CardHeader title="Trends" aside={`Last ${String(points.length)} tracked`} />
+      <XStack gap={8}>
+        {available.map((option) => (
+          <Chip
+            key={option.value}
+            label={option.label}
+            selected={option.value === metric}
+            aria-selected={option.value === metric}
+            testID={`trend-${option.value}`}
+            onPress={() => {
+              setChosen(option.value);
+            }}
+          />
+        ))}
       </XStack>
       {latest === undefined ? null : (
-        <XStack alignItems="baseline" gap={9}>
-          <Display fontSize={26}>{metricLabel(latest, metric)}</Display>
-          <Body fontSize={11} fontWeight="700" color={textAlpha(0.45)}>
-            {change === undefined ? "last match" : `last match · ${change}`}
-          </Body>
+        <XStack alignItems="baseline" gap={8}>
+          <Display fontSize={32}>{metricLabel(latest, metric)}</Display>
+          <Label>{change === undefined ? "last match" : `last match · ${change}`}</Label>
         </XStack>
       )}
       <TrendBars points={points} metric={metric} />
-      <XStack gap={14}>
-        <XStack alignItems="center" gap={5}>
-          <View width={8} height={8} borderRadius={2} backgroundColor={colors.accent} />
-          <Body fontSize={9.5} fontWeight="800" letterSpacing={1.1} color={textAlpha(0.45)}>
-            WON
-          </Body>
-        </XStack>
-        <XStack alignItems="center" gap={5}>
-          <View width={8} height={8} borderRadius={2} backgroundColor={textAlpha(0.18)} />
-          <Body fontSize={9.5} fontWeight="800" letterSpacing={1.1} color={textAlpha(0.45)}>
-            LOST
-          </Body>
-        </XStack>
-        <XStack alignItems="center" gap={5}>
-          <View width={8} height={8} borderRadius={2} backgroundColor={textAlpha(0.3)} />
-          <Body fontSize={9.5} fontWeight="800" letterSpacing={1.1} color={textAlpha(0.45)}>
-            DREW
-          </Body>
-        </XStack>
+      <XStack gap={16}>
+        <LegendKey label="Won" color={colors.primary} />
+        <LegendKey label="Lost" color={colors.outlineVariant} />
+        <LegendKey label="Drew" color={colors.outline} />
       </XStack>
     </Card>
-  );
-}
-
-function StepButton({
-  label,
-  onPress,
-}: {
-  readonly label: string;
-  readonly onPress: () => void;
-}): ReactNode {
-  return (
-    <Pressable
-      role="button"
-      aria-label={label === "+" ? "Raise max heart rate" : "Lower max heart rate"}
-      onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-    >
-      <View
-        width={30}
-        height={30}
-        borderRadius={15}
-        backgroundColor={colors.row}
-        alignItems="center"
-        justifyContent="center"
-      >
-        <Body fontSize={16} fontWeight="800">
-          {label}
-        </Body>
-      </View>
-    </Pressable>
   );
 }
 
@@ -309,33 +230,27 @@ export function ZonesCard({
     return null;
   }
   return (
-    <Card
-      borderRadius={20}
-      paddingVertical={15}
-      paddingHorizontal={17}
-      gap={14}
-      testID="zones-card"
-    >
-      <CardHeader title="HEART RATE ZONES" />
+    <Card padding={20} gap={16} testID="zones-card">
+      <CardHeader title="Heart rate zones" />
       <ZoneBar zones={zones} />
       <ZoneLegend zones={zones} maxHr={maxHr.bpm} />
-      <XStack alignItems="center" gap={10} paddingTop={2}>
+      <XStack alignItems="center" gap={8}>
         <YStack flex={1}>
-          <Body fontSize={12.5} fontWeight="800">
-            {`Max heart rate ${String(maxHr.bpm)}`}
-          </Body>
-          <Body fontSize={10.5} fontWeight="600" color={textAlpha(0.45)}>
-            {maxHr.estimated ? "Estimated from your highest reading" : "Set by you"}
-          </Body>
+          <Body fontSize={16}>{`Max heart rate ${String(maxHr.bpm)}`}</Body>
+          <Label>{maxHr.estimated ? "Estimated from your highest reading" : "Set by you"}</Label>
         </YStack>
-        <StepButton
-          label="−"
+        <IconButton
+          icon="remove"
+          label="Lower max heart rate"
+          variant="tonal"
           onPress={() => {
             onChangeMaxHr(maxHr.bpm - 1);
           }}
         />
-        <StepButton
-          label="+"
+        <IconButton
+          icon="add"
+          label="Raise max heart rate"
+          variant="tonal"
           onPress={() => {
             onChangeMaxHr(maxHr.bpm + 1);
           }}

@@ -9,12 +9,12 @@ import type {
   ThirdSetMode,
 } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
-import { XStack, YStack } from "tamagui";
-import { ArrowRight } from "@/components/icons.tsx";
+import { YStack } from "tamagui";
+import { Button } from "@/components/controls.tsx";
 import { PickerSheet } from "@/components/picker-sheet.tsx";
 import { SegmentedRow } from "@/components/segmented-row.tsx";
-import { Body, Card, Display } from "@/components/ui.tsx";
-import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
+import { Card, Label } from "@/components/ui.tsx";
+import { colors, onSurfaceAlpha } from "@/theme/colors.ts";
 
 /** "Singles · FIP scoring" style subtitle under the header. */
 export function matchSubtitle(
@@ -124,11 +124,11 @@ export function SportOptions({
           value={squashServeBoxes}
           onChange={setSquashServeBoxes}
         />
-        <Body fontSize={11.5} fontWeight="600" color={textAlpha(0.45)}>
+        <Label lineHeight={16}>
           {squashServeBoxes === "player"
             ? "Each hand starts from the serving team's saved preferred side (Profile — default right), then boxes alternate every point."
             : `Each hand starts from the ${squashServeBoxes} box, then boxes alternate every point.`}
-        </Body>
+        </Label>
         <SegmentedRow
           label="Games"
           options={[
@@ -202,6 +202,7 @@ export function SportOptions({
         label="At deuce"
         options={[
           { value: "advantage", label: "Advantage" },
+          { value: "starPoint", label: "Star pt" },
           { value: "goldenPoint", label: "Golden pt" },
         ]}
         value={deuceMode}
@@ -239,9 +240,9 @@ export function MatchPickerSheet({
 
   let stepLabel = "";
   if (isSingles) {
-    stepLabel = isTeamA ? "PLAYER A" : "PLAYER B";
+    stepLabel = isTeamA ? "Player A" : "Player B";
   } else {
-    stepLabel = isTeamA ? "1 OF 2" : "2 OF 2";
+    stepLabel = isTeamA ? "1 of 2" : "2 of 2";
   }
 
   let selected: readonly string[] = [];
@@ -277,7 +278,7 @@ export function MatchPickerSheet({
   );
 }
 
-/** The optional pre-match note input, shown on the setup screen. */
+/** The pinned bottom bar of the setup screen: the one primary action. */
 export function StartMatchButton({
   ready,
   onStart,
@@ -287,36 +288,28 @@ export function StartMatchButton({
   readonly onStart: () => void;
   readonly bottomInset: number;
 }): ReactNode {
-  const labelColor = ready ? colors.onAccent : textAlpha(0.35);
   return (
     <YStack
       gap={8}
       paddingHorizontal={16}
-      paddingTop={10}
+      paddingTop={12}
       paddingBottom={bottomInset + 12}
-      backgroundColor={colors.screen}
+      backgroundColor={colors.background}
     >
-      <XStack
-        height={62}
-        backgroundColor={ready ? colors.accent : colors.toggle}
-        borderRadius={18}
-        alignItems="center"
-        justifyContent="center"
-        gap={10}
-        boxShadow={ready ? `0 6px 18px ${accentAlpha(0.45)}` : "unset"}
-        pressStyle={{ opacity: 0.85 }}
-        role="button"
-        aria-label="Start match"
+      {/* Not `disabled`: a tap on an unready setup is a no-op, as before. */}
+      <Button
+        label="Start match"
+        size="lg"
+        trailingIcon="arrowForward"
         onPress={onStart}
-      >
-        <Display fontSize={21} letterSpacing={1.5} color={labelColor}>
-          START MATCH
-        </Display>
-        <ArrowRight size={18} color={labelColor} />
-      </XStack>
-      <Body textAlign="center" fontSize={11} fontWeight="600" color={textAlpha(0.45)}>
-        Watches join automatically when the match starts
-      </Body>
+        {...(ready
+          ? {}
+          : {
+              backgroundColor: onSurfaceAlpha(0.1),
+              contentColor: onSurfaceAlpha(0.38),
+            })}
+      />
+      <Label textAlign="center">Watches join automatically when the match starts</Label>
     </YStack>
   );
 }
@@ -377,7 +370,7 @@ export function MatchSetupOptions({
 }): ReactNode {
   const teamLabel = (team: TeamId): string => teamLabels?.[team] ?? `Team ${team}`;
   return (
-    <Card borderRadius={20} padding={16} gap={13}>
+    <Card padding={20} gap={16}>
       <SegmentedRow
         label="Format"
         options={[
