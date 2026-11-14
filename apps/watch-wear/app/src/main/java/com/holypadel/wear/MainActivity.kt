@@ -16,7 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.holypadel.wear.ui.CourtColors
+import com.holypadel.wear.ui.WatchColors
 import com.holypadel.wear.ui.WatchApp
 import kotlinx.coroutines.launch
 
@@ -60,7 +60,7 @@ class MainActivity : ComponentActivity() {
         // Drive the exercise session from phase transitions in the mirrored state.
         lifecycleScope.launch {
             sync.state.collect { state ->
-                CourtColors.applyPalette(state.palette)
+                WatchColors.applyPalette(state.palette)
                 val phase = state.phase
                 if (phase == Phase.LIVE && lastPhase != Phase.LIVE) {
                     startTracking(state.startedAt)
@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val state by sync.state.collectAsState()
             val stats by tracker.stats.collectAsState()
+            val pendingTaps by sync.pending.collectAsState()
             var lockEnabled by remember { mutableStateOf(lockPrefs.isEnabled()) }
             var flipped by remember { mutableStateOf(lockPrefs.isFlipped()) }
             WatchApp(
@@ -106,6 +107,7 @@ class MainActivity : ComponentActivity() {
                 },
                 state = state,
                 liveBpm = if (stats.tracking) stats.bpm else 0,
+                pendingTaps = pendingTaps,
                 onScore = { team -> sync.score(team) },
                 onUndo = { sync.undo() },
                 onSetChoice = { choice -> sync.setChoice(choice) },

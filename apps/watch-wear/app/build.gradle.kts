@@ -60,8 +60,11 @@ dependencies {
 
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
-    // One-handed gesture API: lets the match lock swallow the wrist-turn dismiss on Wear OS 7+; no-op elsewhere.
+    // Wear Material 3 Expressive: theme, scaffolds, edge buttons, button groups. Also the
+    // one-handed gesture API, which lets the match lock swallow the wrist-turn dismiss on
+    // Wear OS 7+ (no-op elsewhere). Signatures checked against the 1.7.1 release AARs.
     implementation("androidx.wear.compose:compose-material3:1.7.1")
+    implementation("androidx.wear.compose:compose-foundation:1.7.1")
     implementation("androidx.activity:activity-compose:1.13.0")
     // core-ktx stays at 1.18.0 (what activity-compose pulls anyway); 1.19.0 needs compileSdk 37.
     implementation("androidx.core:core-ktx:1.18.0")
@@ -78,6 +81,8 @@ dependencies {
     // against the 1.6.2 / 1.4.2 release AARs; both need compileSdk >= 35.
     implementation("androidx.wear.tiles:tiles:1.6.2")
     implementation("androidx.wear.protolayout:protolayout:1.4.2")
+    // Material 3 Expressive tile layouts (primary layout, edge button), same release train.
+    implementation("androidx.wear.protolayout:protolayout-material3:1.4.2")
 
     // Wear ongoing activity — the live match shows on the watch face and in the ongoing
     // slot. Signatures checked against the 1.1.0 release AAR; core-ktx stays pinned above.

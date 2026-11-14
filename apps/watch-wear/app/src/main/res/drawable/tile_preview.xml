@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tile picker preview: the idle tile — wordmark, last result, START LAST pill. -->
+<!-- Tile picker preview: the idle tile — title, last result, and the Start last edge button. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="192dp"
     android:height="192dp"
     android:viewportWidth="192"
     android:viewportHeight="192">
   <path android:fillColor="#FF000000" android:pathData="M96,0a96,96 0,1 0,0.01 0Z" />
-  <path android:fillColor="#FFFF6B35" android:pathData="M66,52h60v6h-60z" />
-  <path android:fillColor="#8CFFFFFF" android:pathData="M74,72h44v4h-44z" />
-  <path android:fillColor="#FFFFFFFF" android:pathData="M52,84h88v10h-88z" />
-  <path android:fillColor="#FFFF6B35" android:pathData="M70,110h52a20,20 0,0 1,0 40h-52a20,20 0,0 1,0 -40Z" />
-  <path android:fillColor="#FF0E1116" android:pathData="M78,127h36v6h-36z" />
+  <path android:fillColor="#FFF9EEEC" android:pathData="M68,28h56a3,3 0,0 1,0 6h-56a3,3 0,0 1,0 -6Z" />
+  <path android:fillColor="#FFD6C2BD" android:pathData="M60,82h72a2,2 0,0 1,0 4h-72a2,2 0,0 1,0 -4Z" />
+  <path android:fillColor="#FFF9EEEC" android:pathData="M50,94h92a4,4 0,0 1,0 8h-92a4,4 0,0 1,0 -8Z" />
+  <path android:fillColor="#FFFFDBD0" android:pathData="M70,150h52c14,0 22,8 22,18c0,12 -22,22 -48,22s-48,-10 -48,-22c0,-10 8,-18 22,-18Z" />
+  <path android:fillColor="#FF390C00" android:pathData="M78,166h36a2.5,2.5 0,0 1,0 5h-36a2.5,2.5 0,0 1,0 -5Z" />
 </vector>
