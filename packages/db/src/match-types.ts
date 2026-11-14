@@ -11,7 +11,6 @@ export interface NewMatch {
   readonly id: string;
   readonly config: MatchConfig;
   readonly players: TeamPlayers;
-  readonly court?: string;
   readonly location?: string;
   /** Optional free-text note, editable before or after the match. */
   readonly note?: string;
@@ -23,7 +22,6 @@ export interface StoredMatch {
   readonly status: MatchStatus;
   readonly config: MatchConfig;
   readonly players: TeamPlayers;
-  readonly court: string | undefined;
   readonly location: string | undefined;
   readonly startedAt: number;
   readonly endedAt: number | undefined;

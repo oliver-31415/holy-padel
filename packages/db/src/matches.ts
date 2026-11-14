@@ -10,7 +10,7 @@ import {
   queryOne,
 } from "./driver.ts";
 import { parseConfig, parseTeam } from "./match-config.ts";
-import type { MatchSummary, StoredMatch } from "./match-types.ts";
+import type { MatchSummary, StoredMatch, TeamPlayers } from "./match-types.ts";
 
 function toStoredMatch(row: SqlRow): StoredMatch {
   const status = expectString(row, "status");
@@ -26,7 +26,6 @@ function toStoredMatch(row: SqlRow): StoredMatch {
       A: [expectString(row, "team_a_player_1"), optionalString(row, "team_a_player_2")],
       B: [expectString(row, "team_b_player_1"), optionalString(row, "team_b_player_2")],
     },
-    court: optionalString(row, "court"),
     location: optionalString(row, "location"),
     startedAt: expectNumber(row, "started_at"),
     endedAt: optionalNumber(row, "ended_at"),
@@ -349,6 +348,28 @@ export function resumeMatch(driver: SqlDriver, id: string, now: number): void {
 /** Set or clear a match's free-text note (editable before and after play). */
 export function setMatchNote(driver: SqlDriver, id: string, note: string): void {
   driver.execute("UPDATE matches SET note = ? WHERE id = ?", [note === "" ? null : note, id]);
+}
+
+/**
+ * Replace who played a match — for a lineup picked wrong at the start. The
+ * rallies are untouched, so every record and stat is simply recomputed for the
+ * new players.
+ */
+export function updateMatchPlayers(driver: SqlDriver, id: string, players: TeamPlayers): void {
+  driver.execute(
+    `UPDATE matches
+        SET team_a_player_1 = ?, team_a_player_2 = ?, team_b_player_1 = ?, team_b_player_2 = ?
+      WHERE id = ?`,
+    [players.A[0], players.A[1] ?? null, players.B[0], players.B[1] ?? null, id],
+  );
+}
+
+/** Set or clear where a match was played. */
+export function setMatchLocation(driver: SqlDriver, id: string, location: string): void {
+  driver.execute("UPDATE matches SET location = ? WHERE id = ?", [
+    location === "" ? null : location,
+    id,
+  ]);
 }
 
 export function countMatches(driver: SqlDriver): number {

@@ -15,6 +15,8 @@ import {
   loadEvents,
   migrate,
   removeLastEvent,
+  setMatchLocation,
+  updateMatchPlayers,
 } from "../src/index.ts";
 import { CONFIG, newMatch, nextTimestamp, seededDriver, storeMatchWithPoints } from "./fixtures.ts";
 import { memoryDriver } from "./memory-driver.ts";
@@ -64,9 +66,44 @@ describe("matches and events", () => {
     expect(stored).toMatchObject({
       status: "live",
       config: CONFIG,
-      court: "Court 4",
+      location: "Club Padel Norte",
       names: { A: ["Nico", "Javi"], B: ["Marta", "Leo"] },
     });
+  });
+
+  it("changes who played without touching the rallies", () => {
+    const driver = seededDriver();
+    const events = storeMatchWithPoints(driver, "m1", "AABBBA");
+
+    updateMatchPlayers(driver, "m1", { A: ["nico", "ana"], B: ["marta", "pablo"] });
+
+    const stored = getMatch(driver, "m1");
+    expect(stored?.players).toEqual({ A: ["nico", "ana"], B: ["marta", "pablo"] });
+    expect(stored?.names).toEqual({ A: ["Nico", "Ana"], B: ["Marta", "Pablo"] });
+    expect(loadEvents(driver, "m1")).toEqual(events);
+  });
+
+  it("turns a doubles lineup into singles by clearing the second slots", () => {
+    const driver = seededDriver();
+    createMatch(driver, newMatch("m1"));
+
+    updateMatchPlayers(driver, "m1", { A: ["nico", undefined], B: ["leo", undefined] });
+
+    expect(getMatch(driver, "m1")?.players).toEqual({
+      A: ["nico", undefined],
+      B: ["leo", undefined],
+    });
+  });
+
+  it("sets and clears where a match was played", () => {
+    const driver = seededDriver();
+    createMatch(driver, newMatch("m1"));
+
+    setMatchLocation(driver, "m1", "Club Río Sur");
+    expect(getMatch(driver, "m1")?.location).toBe("Club Río Sur");
+
+    setMatchLocation(driver, "m1", "");
+    expect(getMatch(driver, "m1")?.location).toBeUndefined();
   });
 
   it("supports undo by removing the last event", () => {

@@ -49,9 +49,11 @@ export {
   resumeMatch,
   scorePoint,
   setFinishedWinner,
+  setMatchLocation,
   setMatchNote,
   setPendingGameSet,
   updateFirstServe,
+  updateMatchPlayers,
 } from "./matches.ts";
 export type { MotionSample } from "./motion.ts";
 export { loadMatchMotion, parseMotionSamples, saveMatchMotion } from "./motion.ts";

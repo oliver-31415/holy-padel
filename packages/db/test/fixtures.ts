@@ -42,7 +42,6 @@ export function newMatch(id: string, overrides?: Partial<NewMatch>): NewMatch {
     id,
     config: CONFIG,
     players: { A: ["nico", "javi"], B: ["marta", "leo"] },
-    court: "Court 4",
     location: "Club Padel Norte",
     startedAt: nextTimestamp(),
     ...overrides,
