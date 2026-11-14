@@ -184,6 +184,9 @@ Native and companion coverage lives in separate workflows:
 | `watch-bridge` | Kotlin + Swift compile checks for the phone-side watch bridge |
 | `engine-ports` | Swift and Kotlin scoring ports against golden vectors |
 
+The `apk` workflow checks nothing: on demand (the Actions tab, or an `apk-*` tag)
+it builds the installable phone and Wear OS APKs and uploads them as one artifact.
+
 ## Regenerate code intelligence docs
 
 GitNexus is used to keep a generated module wiki in Markdown:

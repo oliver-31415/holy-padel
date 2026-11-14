@@ -1,0 +1,81 @@
+name: APKs
+
+# Builds the two installable Android apps — the phone app and its Wear OS
+# companion — and uploads them as one artifact. Both are release builds (JS
+# bundled, no Metro needed) signed with the debug keystore `expo prebuild`
+# generates, so no secrets are involved and the pair share a signature, which
+# the Wearable Data Layer needs to link them. The phone build is ~20 minutes, so
+# this only runs on demand: from the Actions tab, or by pushing an `apk-*` tag.
+on:
+  push:
+    tags: ["apk-*"]
+  workflow_dispatch:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_NO_TELEMETRY: "1"
+
+jobs:
+  build-apks:
+    name: build-apks
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Accept licenses and install SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-36" "platforms;android-37.0" "build-tools;36.0.0"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate the native Android project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+
+      # Real phones are arm64; skipping the other three ABIs cuts the native
+      # compile and the APK size to a quarter.
+      - name: Build the phone release APK
+        working-directory: apps/mobile/android
+        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.1"
+
+      # After the prebuild: the Wear app signs with the keystore it generated.
+      - name: Build the Wear OS release APK
+        working-directory: apps/watch-wear
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Collect the APKs
+        run: |
+          mkdir -p apks
+          cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk apks/holy-padel-phone.apk
+          cp apps/watch-wear/app/build/outputs/apk/release/app-release.apk apks/holy-padel-wear.apk
+
+      - name: Upload the APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: holy-padel-apks
+          path: apks/*.apk
+          if-no-files-found: error
