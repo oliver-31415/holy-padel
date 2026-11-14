@@ -21,7 +21,6 @@ function baseMatch(overrides: Partial<MatchSummary> = {}): MatchSummary {
     status: "live",
     config: bestOfThree,
     players: { A: ["nico", "javi"], B: ["marta", "leo"] },
-    court: "COURT 4",
     location: undefined,
     startedAt: STARTED,
     endedAt: undefined,
@@ -107,7 +106,6 @@ describe("buildWatchState", () => {
     expect(state.clock).toBe("0:47");
     // The watch runs the clock itself from here between pushes.
     expect(state.clockBase).toBe(STARTED);
-    expect(state.court).toBe("COURT 4");
     expect(state.startedAt).toBe(STARTED);
     expect(state.status).toBe("GAME PT");
     expect(state.paused).toBe(false);
@@ -166,8 +164,26 @@ describe("buildWatchState", () => {
     expect(state.phase).toBe("won");
     expect(state.games).toBe("6-0");
     expect(state.pointA).toBe("");
-    expect(state.won).toEqual({ winnerShort: "N&J", scoreLine: "6-0", duration: "0:47" });
+    expect(state.won).toEqual({
+      winnerShort: "N&J",
+      scoreLine: "6-0",
+      duration: "0:47",
+      ownerWon: true,
+    });
     expect(state.startedAt).toBe(STARTED);
+  });
+
+  it("tells the watch when the owner's team lost", () => {
+    const singleSet: MatchConfig = { ...bestOfThree, bestOf: 1, thirdSet: "fullSet" };
+    const snapshot = computeMatch(singleSet, wins("B", 24)); // 0-6 to B
+
+    const state = buildWatchState({
+      ownerId: "nico",
+      now: NOW,
+      live: { match: baseMatch({ config: singleSet }), snapshot },
+    });
+
+    expect(state.won).toMatchObject({ winnerShort: "M&L", ownerWon: false });
   });
 
   it("is idle with no hint when there is no history", () => {

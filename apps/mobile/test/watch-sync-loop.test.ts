@@ -2,6 +2,7 @@ import type { SqlDriver, TeamPlayers } from "@holy-padel/db";
 import { createMatch, createPlayer, getMatch, migrate, setSetting } from "@holy-padel/db";
 import type { MatchConfig } from "@holy-padel/scoring";
 import { describe, expect, it } from "vitest";
+import { watchRoles } from "../src/theme/colors.ts";
 import { applyWatchIntent, INTENT_PATHS } from "../src/watch/apply-intent.ts";
 import type { WatchState } from "../src/watch/build-state.ts";
 import { buildWatchState } from "../src/watch/build-state.ts";
@@ -43,7 +44,7 @@ function scoreOut(driver: SqlDriver): void {
 describe("watch sync loop", () => {
   it("score intents advance the mirrored payload; undo reverses it", () => {
     const driver = freshDb();
-    createMatch(driver, { id: "m1", config, players, startedAt: 0, court: "COURT 4" });
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
 
     expect(currentState(driver).phase).toBe("live");
     expect(currentState(driver).pointA).toBe("0");
@@ -112,12 +113,28 @@ describe("watch sync loop", () => {
 
   it("carries the user's colours, defaulting to orange and violet", () => {
     const driver = freshDb();
-    expect(currentState(driver).palette).toEqual({ accent: "#FF6B35", teamB: "#8B7CFF" });
+    expect(currentState(driver).palette).toMatchObject({ accent: "#FF6B35", teamB: "#8B7CFF" });
 
     setSetting(driver, "accentColor", "mint");
     setSetting(driver, "teamBColor", "teal");
     createMatch(driver, { id: "m1", config, players, startedAt: 0 });
 
-    expect(currentState(driver).palette).toEqual({ accent: "#2EE6A0", teamB: "#12A594" });
+    expect(currentState(driver).palette).toMatchObject({ accent: "#2EE6A0", teamB: "#12A594" });
+  });
+
+  it("sends the Wear colour roles derived from those colours", () => {
+    const driver = freshDb();
+    const orange = watchRoles("#FF6B35", "#8B7CFF");
+    // Wear's tone table: a pale primary, a dark container, every value `#rrggbb`.
+    expect(orange.primary).toBe("#ffdbd0");
+    expect(orange.primaryContainer).toBe("#832600");
+    expect(Object.values(orange).every((hex) => /^#[0-9a-f]{6}$/u.test(hex))).toBe(true);
+    expect(currentState(driver).palette).toMatchObject({ roles: orange });
+
+    setSetting(driver, "accentColor", "sky");
+    expect(currentState(driver).palette).toMatchObject({
+      roles: watchRoles("#38BDF8", "#8B7CFF"),
+    });
+    expect(watchRoles("#38BDF8", "#8B7CFF").primary).not.toBe(orange.primary);
   });
 });

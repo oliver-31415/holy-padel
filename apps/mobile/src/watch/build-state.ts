@@ -35,6 +35,8 @@ export interface WatchWon {
   readonly winnerShort: string;
   readonly scoreLine: string;
   readonly duration: string;
+  /** Whether the device owner's team won — additive since payload v1 ("Match won" / "Match lost"). */
+  readonly ownerWon: boolean;
 }
 
 export interface WatchLast {
@@ -46,7 +48,6 @@ export interface WatchState {
   readonly v: number;
   readonly phase: "idle" | "live" | "won";
   readonly clock: string;
-  readonly court?: string;
   readonly setLabel: string;
   readonly teamA: WatchTeam;
   readonly teamB: WatchTeam;
@@ -98,21 +99,17 @@ const EMPTY_TEAM: WatchTeam = { short: "", serving: false };
 
 export function buildWatchState(input: WatchStateInput): WatchState {
   const { live, last, now, ownerId, palette } = input;
+  // exactOptionalPropertyTypes: omit the key rather than set it to undefined.
   const paletteField = palette === undefined ? {} : { palette };
   if (live !== undefined) {
     return {
       ...(live.snapshot.finished
-        ? wonState(live.match, live.snapshot, now)
+        ? wonState(live.match, live.snapshot, now, ownerId)
         : liveState(live.match, live.snapshot, now)),
       ...paletteField,
     };
   }
   return { ...idleState(last, ownerId), ...paletteField };
-}
-
-function courtField(match: MatchSummary): { court?: string } {
-  // exactOptionalPropertyTypes: omit the key rather than set it to undefined.
-  return match.court === undefined ? {} : { court: match.court };
 }
 
 /** The watch status line while a long/short decision is staged for the next rally. */
@@ -136,7 +133,6 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
     v: SCHEMA_VERSION,
     phase: "live",
     clock: durationLabel(playedMs(match, now)),
-    ...courtField(match),
     setLabel: context.label,
     teamA: {
       short: shorts.A,
@@ -159,7 +155,12 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
   };
 }
 
-function wonState(match: MatchSummary, snapshot: MatchSnapshot, now: number): WatchState {
+function wonState(
+  match: MatchSummary,
+  snapshot: MatchSnapshot,
+  now: number,
+  ownerId: string,
+): WatchState {
   const shorts = teamInitials(match);
   const winner: TeamId = snapshot.winner ?? "A";
   const scoreLine = finalScoreLine(snapshot);
@@ -168,7 +169,6 @@ function wonState(match: MatchSummary, snapshot: MatchSnapshot, now: number): Wa
     v: SCHEMA_VERSION,
     phase: "won",
     clock: duration,
-    ...courtField(match),
     setLabel: "",
     teamA: { short: shorts.A, serving: false },
     teamB: { short: shorts.B, serving: false },
@@ -177,7 +177,12 @@ function wonState(match: MatchSummary, snapshot: MatchSnapshot, now: number): Wa
     games: scoreLine,
     status: "",
     startedAt: match.startedAt,
-    won: { winnerShort: winner === "A" ? shorts.A : shorts.B, scoreLine, duration },
+    won: {
+      winnerShort: winner === "A" ? shorts.A : shorts.B,
+      scoreLine,
+      duration,
+      ownerWon: winner === ownerTeamOf(match, ownerId),
+    },
   };
 }
 

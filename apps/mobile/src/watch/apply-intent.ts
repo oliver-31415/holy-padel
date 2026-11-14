@@ -122,7 +122,6 @@ function applyStartLast(driver: SqlDriver, ctx: IntentContext): void {
     id: ctx.newMatchId(),
     config: rematchConfig(last.config),
     players: last.players,
-    ...(last.court === undefined ? {} : { court: last.court }),
     ...(last.location === undefined ? {} : { location: last.location }),
     startedAt: ctx.now,
   });

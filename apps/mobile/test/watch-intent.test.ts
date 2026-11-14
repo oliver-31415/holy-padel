@@ -66,7 +66,7 @@ describe("applyWatchIntent", () => {
 
   it("rematches the last finished lineup when idle", () => {
     const driver = freshDb();
-    createMatch(driver, { id: "m1", config, players, startedAt: 0, court: "COURT 4" });
+    createMatch(driver, { id: "m1", config, players, startedAt: 0, location: "Club Norte" });
     finishMatch(driver, "m1", { winner: "A", endedAt: 10, scoreLine: "6-0 · 6-0" });
 
     applyWatchIntent(driver, { path: INTENT_PATHS.startLast, body: "" }, ctx);
@@ -74,7 +74,7 @@ describe("applyWatchIntent", () => {
     const live = getLiveMatch(driver);
     expect(live?.id).toBe("rematch");
     expect(live?.players).toEqual(players);
-    expect(live?.court).toBe("COURT 4");
+    expect(live?.location).toBe("Club Norte");
   });
 
   it("leaves the rematch's first serve undecided when the original was", () => {
