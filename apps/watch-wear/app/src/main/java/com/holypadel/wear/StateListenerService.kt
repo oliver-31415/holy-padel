@@ -21,10 +21,14 @@ class StateListenerService : WearableListenerService() {
             val item = event.dataItem
             if (item.uri.path != SyncPaths.STATE) continue
             val json = DataMapItem.fromDataItem(item).dataMap.getString(SyncPaths.STATE_KEY) ?: continue
+            val state = MatchState.fromJson(json)
             // end() is a no-op when no session is running, so non-LIVE pushes are harmless.
-            if (MatchState.fromJson(json).phase != Phase.LIVE) {
+            if (state.phase != Phase.LIVE) {
                 ExerciseSession.tracker(this).end()
             }
+            // The phone just reached us, so a workout summary still waiting from an earlier
+            // match (sent while the phone was away) can go now, even with the app closed.
+            IntentOutbox.matchChanged(this, state.startedAt)
         }
         TileService.getUpdater(this).requestUpdate(ScoreTileService::class.java)
     }

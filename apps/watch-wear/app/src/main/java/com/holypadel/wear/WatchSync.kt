@@ -29,28 +29,32 @@ object SyncPaths {
 
 /**
  * Bridges the Wearable Data Layer to a [MatchState] flow, and sends score/undo
- * intents back to the phone. The phone owns the engine; this only mirrors state.
+ * intents back to the phone through the [IntentOutbox], which keeps each one until
+ * the phone has it. The phone owns the engine; this only mirrors state.
  * Callback-based so it needs no extra coroutine dependencies.
  */
 class WatchSync(context: Context) : DataClient.OnDataChangedListener {
     private val appContext = context.applicationContext
     private val dataClient: DataClient = Wearable.getDataClient(appContext)
-    private val messageClient = Wearable.getMessageClient(appContext)
-    private val nodeClient = Wearable.getNodeClient(appContext)
     private val vibrator = appContext.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
 
     private val stateFlow = MutableStateFlow(MatchState.IDLE)
     val state: StateFlow<MatchState> = stateFlow
 
+    /** Taps the phone has not accepted yet — non-zero while it is out of reach. */
+    val pending: StateFlow<Int> = IntentOutbox.pending
+
     fun start() {
         dataClient.addListener(this)
+        // Back on screen: anything still queued (a tap, an old workout summary) gets another go.
+        IntentOutbox.flush(appContext)
         // Pull any state already published before we started listening.
         dataClient.dataItems.addOnSuccessListener { buffer ->
             try {
                 for (item in buffer) {
                     if (item.uri.path == SyncPaths.STATE) {
                         val json = DataMapItem.fromDataItem(item).dataMap.getString(SyncPaths.STATE_KEY)
-                        if (json != null) stateFlow.value = MatchState.fromJson(json)
+                        if (json != null) publish(MatchState.fromJson(json))
                     }
                 }
             } finally {
@@ -69,19 +73,17 @@ class WatchSync(context: Context) : DataClient.OnDataChangedListener {
             val item = event.dataItem
             if (item.uri.path != SyncPaths.STATE) continue
             val json = DataMapItem.fromDataItem(item).dataMap.getString(SyncPaths.STATE_KEY)
-            if (json != null) {
-                stateFlow.value = MatchState.fromJson(json)
-            }
+            if (json != null) publish(MatchState.fromJson(json))
         }
     }
 
-    /** Send a fire-and-forget intent to every connected phone node. */
-    private fun broadcast(path: String, body: String) {
-        nodeClient.connectedNodes.addOnSuccessListener { nodes ->
-            for (node in nodes) {
-                messageClient.sendMessage(node.id, path, body.toByteArray())
-            }
-        }
+    /**
+     * Adopt a state from the phone. It also tells the outbox which match is on screen now
+     * (stale taps for another one are dropped) and that the phone is in reach.
+     */
+    private fun publish(state: MatchState) {
+        stateFlow.value = state
+        IntentOutbox.matchChanged(appContext, state.startedAt)
     }
 
     /**
@@ -90,7 +92,9 @@ class WatchSync(context: Context) : DataClient.OnDataChangedListener {
      */
     private fun tap(path: String, body: String) {
         buzz()
-        broadcast(path, body)
+        // Tied to the match on screen: retried until the phone has it, dropped if the
+        // phone comes back showing a different match.
+        IntentOutbox.send(appContext, path, body, match = stateFlow.value.startedAt)
     }
 
     /** Short haptic tick so a tap feels acknowledged before the round-trip. */
@@ -129,5 +133,5 @@ class WatchSync(context: Context) : DataClient.OnDataChangedListener {
     fun end() = tap(SyncPaths.END, "")
 
     /** Ship the finished exercise summary — the phone writes it to Health Connect. */
-    fun sendWorkout(summaryJson: String) = broadcast(SyncPaths.WORKOUT, summaryJson)
+    fun sendWorkout(summaryJson: String) = IntentOutbox.send(appContext, SyncPaths.WORKOUT, summaryJson)
 }
