@@ -1,6 +1,7 @@
 package expo.modules.livenotification
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -44,6 +45,10 @@ class LiveContent : Record {
  * is a pull-down away without opening the app. JS owns every string and every
  * decision; this only renders and forwards button taps as `onAction` events.
  * On Android 16 it asks to be promoted to a Live Update (a status-bar chip).
+ *
+ * While a match is live the notification belongs to [LiveMatchService], a
+ * foreground service whose only job is to stop Android freezing or killing the
+ * app mid-match — the watch sync and these buttons need the app's JS running.
  */
 class LiveNotificationModule : Module() {
   companion object {
@@ -54,6 +59,10 @@ class LiveNotificationModule : Module() {
     /** The module instance whose JS is alive — the receiver forwards taps to it. */
     @Volatile
     internal var active: LiveNotificationModule? = null
+
+    /** The notification for the match in play; null when nothing is live. */
+    @Volatile
+    internal var latest: Notification? = null
   }
 
   private val context: Context?
@@ -72,6 +81,16 @@ class LiveNotificationModule : Module() {
 
     OnDestroy {
       if (active === this@LiveNotificationModule) active = null
+      // The JS that kept the score current is gone; don't hold the process for nothing.
+      latest = null
+      context?.let { LiveMatchService.stop(it) }
+    }
+
+    // A match started from the watch finds the app in the background, where Android
+    // refuses to start the service. Opening the app is the first chance to make good.
+    OnActivityEntersForeground {
+      val ctx = context
+      if (ctx != null && latest != null && !LiveMatchService.running) LiveMatchService.start(ctx)
     }
 
     /** Ask for the notification permission (Android 13+); true when already granted. */
@@ -85,18 +104,29 @@ class LiveNotificationModule : Module() {
       return@Function false
     }
 
-    /** Post or update the notification; false when notifications are blocked. */
+    /**
+     * Post or update the notification, and keep the app alive behind it. False when
+     * notifications are blocked — the service still runs then, it just shows nothing.
+     */
     Function("show") { content: LiveContent ->
       val ctx = context ?: return@Function false
-      if (!canPost(ctx)) return@Function false
       runCatching {
         ensureChannel(ctx)
-        NotificationManagerCompat.from(ctx).notify(NOTIFICATION_ID, build(ctx, content))
-      }.isSuccess
+        val notification = build(ctx, content)
+        latest = notification
+        // Not running yet: start it, and it posts `latest` itself as it goes foreground.
+        if (!LiveMatchService.running) LiveMatchService.start(ctx)
+        if (canPost(ctx)) NotificationManagerCompat.from(ctx).notify(NOTIFICATION_ID, notification)
+      }
+      canPost(ctx)
     }
 
     Function("hide") {
-      context?.let { NotificationManagerCompat.from(it).cancel(NOTIFICATION_ID) }
+      latest = null
+      context?.let {
+        LiveMatchService.stop(it)
+        NotificationManagerCompat.from(it).cancel(NOTIFICATION_ID)
+      }
     }
   }
 
@@ -141,7 +171,7 @@ class LiveNotificationModule : Module() {
     )
   }
 
-  private fun build(ctx: Context, content: LiveContent): android.app.Notification {
+  private fun build(ctx: Context, content: LiveContent): Notification {
     val builder = NotificationCompat.Builder(ctx, CHANNEL_ID)
       .setSmallIcon(R.drawable.ic_live_score)
       .setContentTitle(content.title)

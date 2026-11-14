@@ -2,10 +2,24 @@
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <!-- Android 16: lets the live score show as a Live Update chip in the status bar. -->
   <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+  <!-- The live match runs as a foreground service so Android keeps the app — and with it
+       the watch sync and the notification's buttons — alive while the phone is pocketed.
+       The connectedDevice type needs one network-or-Bluetooth permission to be declared;
+       CHANGE_NETWORK_STATE is the one that asks the user for nothing. -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+  <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
   <application>
     <receiver
       android:name="expo.modules.livenotification.LiveNotificationReceiver"
       android:exported="false" />
+    <!-- stopWithTask: swiping the app away ends the service (and its notification) rather
+         than leaving a score on screen that nothing is keeping up to date. -->
+    <service
+      android:name="expo.modules.livenotification.LiveMatchService"
+      android:exported="false"
+      android:foregroundServiceType="connectedDevice"
+      android:stopWithTask="true" />
   </application>
 </manifest>
