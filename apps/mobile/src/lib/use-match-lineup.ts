@@ -21,11 +21,15 @@ export interface MatchLineup {
   readonly togglePick: (id: string, format: Format) => void;
 }
 
+/** The players (and note) a lineup starts from: a resumable draft, or a stored match. */
+export type LineupSeed = Pick<MatchDraft, "teamA1" | "partner" | "teamB" | "note">;
+
 /**
  * The picked-players half of the new-match screen (teams, note and the open
- * picker). Seeded from the resumable draft, exactly like the rules state.
+ * picker). Seeded from the resumable draft, exactly like the rules state — or
+ * from a stored match, when its lineup is being corrected.
  */
-export function useMatchLineup(draft: MatchDraft | undefined, ownerId: string): MatchLineup {
+export function useMatchLineup(draft: LineupSeed | undefined, ownerId: string): MatchLineup {
   const [teamA1, setTeamA1] = useState<string>(draft?.teamA1 ?? ownerId);
   const [partner, setPartner] = useState<string | undefined>(draft?.partner);
   const [teamB, setTeamB] = useState<readonly string[]>(draft?.teamB ?? []);
